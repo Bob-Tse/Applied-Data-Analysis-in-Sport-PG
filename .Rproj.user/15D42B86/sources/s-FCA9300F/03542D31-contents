@@ -1,0 +1,26 @@
+# install the package "tidyverse" if not installed
+if(!("tidyverse" %in% rownames(installed.packages()))){
+  install.packages("tidyverse")
+  }
+
+# load the package tidyverse
+library(tidyverse)
+
+# files ending with csv
+files <- list.files("data", pattern = "csv$") 
+
+# names for the datasets
+file_name <- gsub(pattern = ".csv", "",files)
+
+# empty list
+emty_list <- list()
+
+# loop reading data
+for (i in 1:length(files)){
+  emty_list[[i]] <- read_csv(paste0("data/",files[i]))
+  assign(file_name[i],emty_list[[i]]) 
+}
+
+# remove variables that are no longer needed
+rm(list=setdiff(ls(),file_name))
+

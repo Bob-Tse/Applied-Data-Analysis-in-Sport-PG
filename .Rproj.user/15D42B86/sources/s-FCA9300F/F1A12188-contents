@@ -1,0 +1,240 @@
+# install the package "naniar" if not installed
+if(!("naniar" %in% rownames(installed.packages()))){
+  install.packages("naniar")
+}
+
+# load the package naniar
+library(naniar)
+
+#a) checking for errors and missing values within the datasets
+
+# Percentage of missing values in the dataset '2018-19_nba_player-statistics'
+gg_miss_var(`2018-19_nba_player-statistics`,show_pct = TRUE)
+
+# Missing values in the dataset are caused by dividing zero y zero.
+# For example, 3p% is the quotient of 3P and 3PA.
+# However, in some cases, both 3P and 3PA are zero.
+# Hence, these missing values will be replaced by zero.
+
+for (i in 1:ncol(`2018-19_nba_player-statistics`)){
+  `2018-19_nba_player-statistics`[,i][is.na(`2018-19_nba_player-statistics`[,i])] <- 0
+}
+
+any_na(`2018-19_nba_player-statistics`)
+
+# Percentage of missing values in the dataset '2018-19_nba_team-statistics_1'
+gg_miss_var(`2018-19_nba_team-statistics_1`,show_pct = TRUE)
+
+# Remove three empty columns
+`2018-19_nba_team-statistics_1` <- `2018-19_nba_team-statistics_1` %>% select(-c("...23","...24","...25"))
+
+any_na(`2018-19_nba_team-statistics_1`)
+
+#b) checking the distribution of variables
+
+# distribution of players' points
+
+# Create a new variable representing average points contributed by players
+
+`2018-19_nba_player-statistics` <- transform(`2018-19_nba_player-statistics`,
+                                             PTS_G = PTS/G)
+
+
+
+ggplot(`2018-19_nba_player-statistics`,aes(x=PTS_G))+
+  geom_histogram(mapping = aes(y = ..density..), colour = "black", fill = "grey",bins = 9)+
+  geom_density(alpha = 0.3, fill = "dodgerblue")+
+  ggtitle("Distribution of players' points per game")+
+  xlab("Players' points per game")+
+  theme_classic()+
+  theme(axis.ticks.x = element_blank(),
+        axis.ticks.y = element_blank())
+
+
+
+# distribution of teams' mean age
+ggplot(`2018-19_nba_player-statistics`,aes(x=Age))+
+  geom_histogram(mapping = aes(y = ..density..), colour = "black", fill = "grey",bins=7)+
+  geom_density(alpha = 0.3, fill = "dodgerblue")+
+  ggtitle("Distribution of players' age")+
+  xlab("Players' age")+
+  theme_classic()+
+  theme(axis.ticks.x = element_blank(),
+        axis.ticks.y = element_blank())
+
+
+  ggplot(team_stat,aes(x=WinP))+
+  geom_histogram(mapping = aes(y = ..density..), colour = "black", fill = "grey",bins=5)+
+  geom_density(alpha = 0.3, fill = "dodgerblue")+
+  ggtitle("Distribution of players' age")+
+  xlab("Percentage of wins")+
+  theme_classic()+
+  theme(axis.ticks.x = element_blank(),
+        axis.ticks.y = element_blank())
+
+
+
+#c) checking for relationships between variables, or differences between groups
+
+# DIFFERENCE BETWEEN GROUPS
+`2018-19_nba_player-statistics` %>% ggplot(aes(x=reorder(Pos,`FG.`, FUN = median),y=`FG.`))+
+  geom_boxplot(aes(col=Pos))+
+  geom_jitter(width=0.3,alpha=0.1,aes(col=Pos))+
+  xlab("Position") +
+  ylab("Field Goal Percentage (FG%)") +
+  ggtitle("Field Goal Percentage by Positio")+
+  theme_classic()+
+  theme(axis.ticks.x = element_blank(),
+        axis.ticks.y = element_blank(),
+        legend.position = "right")
+
+# Understand the relationship between the percentage of wins and the free-throw attempts
+
+
+
+
+
+
+
+# using joining functions from the "dplyr" package
+# Teams' ratings can be found on https://www.basketball-reference.com/leagues/NBA_2019_ratings.html
+team_stat <- `2018-19_nba_team-statistics_1` %>% left_join(select(`2018-19_nba_team-statistics_2`,-Rk), by = 'Team')  
+
+# Create a new variable representing the percentage of wins
+team_stat <- team_stat %>% mutate(PTSG = PTS/G,
+                                  WinP = W/G)
+
+
+team_stat %>% arrange(`FT%`) %>% ggplot(aes(x=`FT%`,y= WinP ))+
+  geom_point()+
+  geom_smooth(method="lm")
+
+team_stat %>% arrange(`FTA`) %>% ggplot(aes(x=`FTA`,y= WinP ))+
+  geom_point()+
+  geom_smooth(method="lm")
+
+# 
+team_stat %>% arrange(`FG%`) %>% ggplot(aes(x=`FG%`,y= WinP ))+
+  geom_point()+
+  geom_smooth(method="lm")
+
+team_stat %>% arrange(`FGA`) %>% ggplot(aes(x=`FGA`,y= WinP ))+
+  geom_point()+
+  geom_smooth(method="lm")
+
+
+
+
+gplot() +
+  + geom_tile(mapping = aes(x = as.factor(Season), y = reorder(Home.team, n), fill = n)) +
+  + scale_fill_gradient(low = "white", high = "#47a5cc")
+
+
+# Players assigned to the 'center' position in the 2018-19 season.
+Center <- `2018-19_nba_player-statistics` %>% filter(Pos=="C") %>% 
+  left_join(`2018-19_nba_player-salaries`[c("player_name","salary")], by="player_name")
+
+# Players assigned to the 'point guard' position in the 2018-19 season.
+Point_Guard <- `2018-19_nba_player-statistics` %>% filter(Pos=="PG") %>% 
+  left_join(`2018-19_nba_player-salaries`[c("player_name","salary")], by="player_name")
+
+# Players assigned to the 'small forward' position in the 2018-19 season.
+Small_Forward <- `2018-19_nba_player-statistics` %>% filter(Pos=="SF") %>% 
+  left_join(`2018-19_nba_player-salaries`[c("player_name","salary")], by="player_name")
+
+# Players assigned to the 'shooting guard' position in the 2018-19 season.
+Shooting_Guard <- `2018-19_nba_player-statistics` %>% filter(Pos=="SG") %>% 
+  left_join(`2018-19_nba_player-salaries`[c("player_name","salary")], by="player_name")
+
+# Players assigned to the 'power forward' position in the 2018-19 season.
+Power_Forward <- `2018-19_nba_player-statistics` %>% filter(Pos=="PF") %>% 
+  left_join(`2018-19_nba_player-salaries`[c("player_name","salary")], by="player_name")
+
+
+
+#d) justification for decisions made about data modelling
+
+team_stat %>% 
+  select(Age,NRtg,`eFG%`,`TS%`,`FT/FGA`,`3P%`,
+         `3P%`,`2P%`,`FT%`,ORB,DRB,AST,
+         STL,BLK,PTSG,WinP) %>% cor() %>% melt() %>% 
+  ggplot(aes(x=Var1, y=Var2, fill=value))+
+  geom_tile()+
+  scale_fill_gradient(low = "white", high = "#47a5cc")
+
+jjjj <- team_stat %>% 
+  select(Age,NRtg,`eFG%`,`TS%`,`FT/FGA`,`3P%`,
+         `3P%`,`2P%`,`FT%`,ORB,DRB,AST,
+         STL,BLK,PTSG,WinP) %>% cor()%>% melt()
+
+# Some variables are highly related with each other, for example, PTSG and BLK,
+# including highly related variables in regression will cause the problem of multicollineaity.
+
+gggg <- team_stat %>% 
+  select(Age,NRtg,`eFG%`,`TS%`,`FT/FGA`,`3P%`,
+         `3P%`,`2P%`,`FT%`,ORB,DRB,AST,
+         STL,BLK,PTSG,WinP)
+
+team_stat <- within(team_stat,{
+  log_age <- log(Age)
+  log_points <- log(PTSG)})
+  
+m_bb_hr <- lm(WinP ~ NRtg + log_age + DRB  , data = team_stat)
+tidy(m_bb_hr, conf.int = TRUE)
+
+library(car)
+vif(m_bb_hr)
+
+# using backward elimination
+
+HHHHH <- `2018-19_nba_player-statistics` %>% select(Age,`FG.`,`X3P.`,`X2P.`,`eFG.`,
+                                           `FT.`,ORB,DRB,STL,BLK,TOV,PTS_G)
+                    
+
+
+
+library(reshape2)
+
+library(broom)
+
+library(tidyverse)
+
+library(party)
+cf1 <- cforest(PTS_G ~ . , data= HHHHH, control=cforest_unbiased(mtry=2,ntree=50)) # fit the random forest
+varimp(cf1)
+
+m_bb_hr2 <- lm(PTS_G ~ TOV + DRB + STL  , data = HHHHH)
+tidy(m_bb_hr2, conf.int = TRUE)
+
+`2018-19_nba_player-statistics`$fit <- fitted.values(m_bb_hr2)
+
+dddd <- `2018-19_nba_player-statistics` %>% filter(PTS_G > fit & Pos == 'C') %>% 
+  left_join(`2018-19_nba_player-salaries`[c("player_name","salary")], by="player_name") %>%
+  arrange(desc(salary))
+
+# Players assigned to the 'center' position in the 2018-19 season.
+Center <- `2018-19_nba_player-statistics` %>% filter(Pos=="C") %>% 
+  left_join(`2018-19_nba_player-salaries`[c("player_name","salary")], by="player_name")
+
+# Players assigned to the 'point guard' position in the 2018-19 season.
+Point_Guard <- `2018-19_nba_player-statistics` %>% filter(Pos=="PG") %>% 
+  left_join(`2018-19_nba_player-salaries`[c("player_name","salary")], by="player_name")
+
+# Players assigned to the 'small forward' position in the 2018-19 season.
+Small_Forward <- `2018-19_nba_player-statistics` %>% filter(Pos=="SF") %>% 
+  left_join(`2018-19_nba_player-salaries`[c("player_name","salary")], by="player_name")
+
+# Players assigned to the 'shooting guard' position in the 2018-19 season.
+Shooting_Guard <- `2018-19_nba_player-statistics` %>% filter(Pos=="SG") %>% 
+  left_join(`2018-19_nba_player-salaries`[c("player_name","salary")], by="player_name")
+
+# Players assigned to the 'power forward' position in the 2018-19 season.
+Power_Forward <- `2018-19_nba_player-statistics` %>% filter(Pos=="PF") %>% 
+  left_join(`2018-19_nba_player-salaries`[c("player_name","salary")], by="player_name")
+
+
+
+
+
+
+#http://r-statistics.co/Variable-Selection-and-Importance-With-R.html

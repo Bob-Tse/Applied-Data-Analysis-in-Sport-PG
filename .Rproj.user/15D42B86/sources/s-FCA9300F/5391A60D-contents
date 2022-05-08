@@ -1,0 +1,93 @@
+# Q11: increase in cholesterol rates 
+
+# Description
+# Read the dataset using the function read_csv() first
+# Then, use the function pivot_longer() to tidy the data (function gather() has been superseded)
+# Next, find out the test group (research center) having the highest cholesterol rate since it is unwise to color all of the test groups.
+# Colour should be used sparingly because too many colours will result in the loss of the pre-attentive value.
+# Finally, use the function ggplot() to visualize the trend.
+# Function scale_size_manual() has been used to highlight the figures for the latest two years.
+
+# install.packages("tidyverse")
+# load the package "tidyverse"
+library(tidyverse)
+
+# embed the dataset in the code and read the data 
+dataset <- read_csv(
+"ALL, 7.2%, 7.6%, 8.0%, 8.1%, 8.6% \n
+A, 2.6%, 3.1%, 3.5%, 3.8%, 4.5% \n
+B, 10.7%, 11.4%, 11.9%, 12.0%, 12.5% \n
+C, 9.2%, 9.7%, 10.2%, 10.4%, 10.9% \n
+D, 8.3%, 8.6%, 9.0%, 9.1%, 9.5% \n
+E, 7.9%, 8.2%, 8.5%, 10.1%, 11.3% \n
+F, 8.7%, 9.1%, 9.6%, 9.6%, 10.1% \n
+G, 3.8%, 4.1%, 4.4%, 4.6%, 5.1% \n
+H, 8.4%, 8.8%, 9.2%, 9.5%, 10.0% \n
+I, 5.1%, 5.6%, 6.0%, 6.2%, 6.7% \n
+J, 6.4%, 6.8%, 7.1%, 7.2%, 7.6% \n
+K, 9.2%, 9.7%, 10.1%, 10.2%, 10.5% \n
+L, 9.9%, 10.2%, 11.0%, 11.1%, 11.6% \n
+M, 5.6%, 6.0%, 6.2%, 6.3%, 6.7%", col_names = c("Research_centre", "2015", "2016", "2017", "2018", "2019"))
+
+# glimpse the dataset
+glimpse(dataset)
+
+# convert the numbers expressed in percentage
+for (i in 2:length(dataset)){
+  for(element in dataset[i]){
+    element <- sub(pattern = "%", replacement = "", element)
+    element <- as.numeric(element)/100
+  }
+  dataset[i] <- element
+}
+
+# Pivot data from wide to long - an updated approach to gather()
+dataset_new <- pivot_longer(dataset,!Research_centre, names_to = "year",values_to = "value")
+
+# change the column type
+dataset_new$year <- as.numeric(dataset_new$year)
+
+# add an extra variable for visualization
+dataset_new <- transform(dataset_new,yr = ifelse(dataset_new$year <=  2017, "yes", "no"))
+
+# find out the research center (test group) having the highest cholesterol rate
+dataset_new %>% group_by(Research_centre) %>% 
+  summarise(level = max(value)) %>% arrange(desc(level))
+
+# highlight the test groups "B", "L" and "ALL"
+grops <- c("B","L","ALL")
+
+# use the ggplot() function to visualize the trend of cholesterol rates
+ggplot(subset(dataset_new, !(Research_centre %in% grops)), aes(x=year,y= value))+
+  geom_line(aes(group = Research_centre, size = yr),color = "gray")+
+  scale_size_manual(name = "Last two years", labels = c("before 2018","after 2018"), values=c("yes"=1, "no"=2))+
+  geom_line(data = subset(dataset_new,  Research_centre %in% grops), aes(x=year,y= value, group = Research_centre, size = yr), color = "orange")+
+  geom_label(data = subset(dataset_new,  Research_centre %in% grops) %>% filter(year == 2019), aes(label = Research_centre))+
+  xlab("Year") +
+  ylab("Cholesterol Rates") +
+  ggtitle("Patients' cholesterol rates after receiving the vaccination by year")+
+  theme_classic()+
+  theme(plot.title = element_text(size = 14, face = "bold", hjust = 0,color ="darkgrey"),
+        axis.title.x = element_text(size = 12, hjust = 0,color ="darkgrey"),
+        axis.title.y = element_text(size = 12, hjust = 1,color ="darkgrey"),
+        axis.text.x = element_text(face = "bold",color = "darkgrey"),
+        axis.text.y = element_text(face = "bold",color = "darkgrey"),
+        axis.ticks.x = element_blank(),
+        axis.ticks.y = element_blank(),
+        legend.position = "right")
+
+# save the graph
+ggsave("cholesterol_rates.png")
+
+
+             
+# Reference:
+# https://r-graphics.org/recipe-line-graph-multiple-line
+# https://tidyr.tidyverse.org/reference/pivot_wider.html
+# https://stackoverflow.com/questions/33944192/ggplot2-color-part-of-the-line 
+# https://stackoverflow.com/questions/5831794/opposite-of-in-exclude-rows-with-values-specified-in-a-vector
+# https://tidyr.tidyverse.org/reference/pivot_longer.html
+# https://tidyr.tidyverse.org/reference/gather.html
+# https://www.r-bloggers.com/2018/07/the-notin-operator/ 
+# https://stackoverflow.com/questions/59545834/highlighting-one-of-my-line-graphs-in-ggplot
+# https://www.r-graph-gallery.com/275-add-text-labels-with-ggplot2.html

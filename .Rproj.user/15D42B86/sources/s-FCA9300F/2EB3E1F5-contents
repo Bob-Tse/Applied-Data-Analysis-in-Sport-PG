@@ -1,0 +1,35 @@
+# load the package tidyverse.
+library(tidyverse)
+
+# load the package naniar.
+library(naniar)
+
+# check the structure and missing values of data frames. 
+
+# one: A data frame storing player's salaries for the 2018-19 season.
+# no missing values found in that data frame
+str(`2018-19_nba_player-salaries`)
+any_na(`2018-19_nba_player-salaries`)
+
+# two: A data frame storing player's performance record for the 2018-19 season.
+# missing values found! Further action is required.
+str(`2018-19_nba_player-statistics`)
+any_na(`2018-19_nba_player-statistics`)
+
+# three: A data frame storing teams' statistics for the 2018-19 season.
+# missing values found! Further action is required.
+str(`2018-19_nba_team-statistics_1`)
+any_na(`2018-19_nba_team-statistics_1`)
+
+# four: A data frame storing teams' statistics for the 2018-19 season.
+# no missing values found in that data frame
+str(`2018-19_nba_team-statistics_2`)
+any_na(`2018-19_nba_team-statistics_2`)
+
+# five: A data frame storing teams' payroll budget for the 2019-20 season.
+# no missing values found in that data frame
+str(`2019-20_nba_team-payroll`)
+any_na(`2019-20_nba_team-payroll`)
+
+# convert the class of the variable "salary" from character to number.
+`2019-20_nba_team-payroll`$salary <- parse_number(`2019-20_nba_team-payroll`[['salary']])

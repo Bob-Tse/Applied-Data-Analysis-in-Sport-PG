@@ -1,0 +1,835 @@
+---
+title: "The quantitative analysis of factors impacting properties' sale price"
+author: "Xucheng Xie"
+student_id: "u3195208"
+date: "08/05/2021"
+output:
+  pdf_document: default
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(error = TRUE)
+```
+
+```{r}
+library(knitr)
+```
+
+## Summary
+
+This project aims to find out the variables affecting properties' sale price.
+
+Data used for modelling are from a popular data set called "the Ames Housing Dataset". There is a total of 79 variables in the data set which cover almost every aspect of residential homes in the United States.1
+
+In the real world, factors considered to impact properties' sale price directly include public transportation, distance to prestigious schools, age, density levels, size, quality levels, economic conditions, inflation rate, etc. The project will prioritize analysis on these factors.
+
+Elhag and Boussabaine(1999) state that six categories determine the construction cost, and the category "project characteristics" is ranked the third among the six and receives 75 per cent severity indices. Aspects covered in this category include size, stories, structures, foundations and quality levels.2
+
+The project raises seven problems in different aspects, including the distribution of properties' sale price, the impact of categorical variables on properties' sale price and the common characteristics of properties with the same price levels.
+
+In order to build an effective model, the project's analysis part has been divided into four sections.
+
+In the first section, the project tries to verify the assumption that categorical variables impact properties' sale price by plotting.
+
+In the second section, the project conducts a cluster analysis to identify the shared characteristics; for example, properties with higher sale price tend to be larger and of better quality.
+
+In the third section, the project conducts an outlier test using the package "DMwR2" and selects appropriate variables for the modelling.
+
+In the last section, the project makes predictions on the test set and checks the RMSE of the model.
+
+The project's findings are that properties' sale price is mainly affected by their size, quality levels, garage spaces and ages. Other variables also impact the sale price but are not as critical as the variables mentioned above.
+
+The deficiency of this project's modelling is that it fails to consider economic conditions and inflation rate. Theoretically, the higher the M2 money supply, the higher the properties' sale price. In addition, larger sample size is required since some variables do not make sense in the cluster analysis.
+
+## 1. Problem identification
+
+1.  What is the distribution of properties' sale price by style?
+
+Answering this question will help gain a brief understanding of the trend of properties' sale price.
+
+2.  Is "Zoning" a significant factor in the determination of properties' sale price?
+
+Answering this question can verify the assumption that "Zoning" plays a role in determining properties' sale price.
+
+3.  Is there a difference in the price of properties built with different types of foundation?
+
+Answering this question can verify the assumption that properties' sale price is affected by materials used in the construction (quality aspect).
+
+4.  Does age affect properties' sale price?
+
+Answering this question can verify the assumption that the older the houses, the lower the price.
+
+5.  What common characteristics do properties have, a swimming pool or an enormous basement?
+
+Answering this question can identify the common characteristics of properties with the same price levels.
+
+6.  What are the correlations between selected variables?
+
+Answering this question can determine the variables having high correlations with the variable "SalePrice" and avoid multicollinearity.
+
+7.  Does the model work on the test set?
+
+Answering this question can test whether the model built makes sense.
+
+## 2. Data prepossessing
+
+### 2.1 Load the packages required for data prepossessing and read the CSV files in a loop.
+
+```{r,echo=FALSE,warning=FALSE}
+# Clean Console as command (CTRL + L)
+cat("\014") 
+
+# Clean all global variables
+rm(list = ls())
+
+# Install package "tidyverse" if it is not installed.
+if(!("tidyverse" %in% rownames(installed.packages()))){
+  install.packages("tidyverse")
+  }else{
+  print("The package is in the library.")
+  }
+# Load the package "tidyverse".
+library(tidyverse)
+
+# Install package "naniar" if it is not installed.
+if(!("naniar" %in% rownames(installed.packages()))){
+  install.packages("naniar")
+}else{
+  print("The package is in the library.")
+}
+# Load the package "naniar".
+library("naniar")
+```
+```{r,echo=TRUE}
+# Import the csv files
+allfiles <- list.files(pattern=".csv$")      
+list.data<-list() 
+data_name <- c("sample","test","train")
+for (i in 1:length(allfiles)) {
+  list.data[[i]]<-read.csv(allfiles[i], header = TRUE)
+  list.data[[i]] <- as_tibble(list.data[[i]])
+  assign(data_name[i],list.data[[i]])
+}
+```
+
+### 2.2 Treat missing values.
+
+**Step 1**
+
+Use "any_na()" function to check whether there are NAs in the dataset.
+
+```{r,echo=FALSE}
+# Check whether there are NAs in the dataset. 
+any_na(train)
+```
+
+**Step 2** 
+
+Create a plot to show the percentage of missing values in variables containing NAs.
+
+```{r,echo=FALSE}
+# Create a plot to show the percentage of missing values in variables containing NAs.
+train[apply(is.na(train), 2, any)] %>% 
+  gg_miss_var(show_pct = TRUE) + labs(x = "Variables with NAs")
+```
+
+**Step 3** 
+
+Use "lapply" function drop the variables which have more than 40 per cent of NAs.
+
+```{r,echo=TRUE}
+# Drop the variables which have more than 40 per cent of NAs.
+train <- train[lapply(train, function(x) sum(is.na(x)) / length(x) ) < 0.4]
+
+```
+
+## 3. EDA
+
+### 3.1.1 The distribution of properties' sale price by style.
+
+```{r,echo=FALSE}
+# Check if "RColorBrewer" is installed and load the package,
+if(!("RColorBrewer" %in% rownames(installed.packages()))){
+  install.packages("RColorBrewer")
+}else{
+  print("The package is in the library.")
+}
+
+ggplot(data = train, mapping = aes(x = SalePrice))+
+  geom_histogram(aes(fill = HouseStyle),position = position_stack(), binwidth = 25000)+
+  xlab("SalePrice")+
+  ylab("Number of observations")+
+  ggtitle("Distribution of properties' sale price by style")+
+  theme_classic()+
+  theme(plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+        axis.title.x = element_text(size = 12, face = "bold", hjust = 0.5),
+        axis.title.y = element_text(size = 12, face = "bold", hjust = 0.5),
+        axis.text.x = element_text(size = 10, face = "plain", hjust = 0.5),
+        axis.line = element_line(size = 0.5, linetype = "solid", colour = "grey"),
+        legend.position = "right",
+        legend.title = element_text(size = 10, face = "bold", hjust = 0.5),
+        legend.text = element_text(size = 10, face = "plain", hjust = 0.5),
+        legend.spacing.y = unit(0.5,'cm'),
+        panel.grid.major = element_line(color = "lightgrey", size = 0.5, 
+                                        linetype = "solid", lineend = "round"),
+        panel.grid.minor = element_line(color = "lightgrey", size = 0.5, 
+                                        linetype = "dotted", lineend = "round"),
+        panel.background = element_rect(fill = "white", colour = "black", size = 2),
+        plot.background = element_rect(fill = "white", colour = "lightgrey", size = 2 ),
+        axis.ticks = element_blank())+
+  scale_fill_brewer(name = "Style", palette = "Set2")
+```
+
+The distribution of sale price is right-skewed, meaning that log transformation of the variable "SalePrice" is necessary before modelling. It can be seen that properties built with "1Story" and "2Story" styles tend to be more expensive than properties built with other styles, but the price gap seems not significant. Hence, further research is needed. A violin plot will be used to compare properties' sale price of different styles.
+
+### 3.1.2 Log transformation of the variable "SalePrice".
+
+```{r,echo=FALSE}
+
+# Step 1
+# Create a new variable "logprice".
+train <- train %>% mutate(logprice = log(SalePrice+1))
+
+# Step 2
+# Create a histogram of logged price to see if it was altered successfully.
+ggplot(data = train, mapping = aes(x = logprice, fill = ..count..))+
+  geom_histogram(binwidth = 0.2)+
+  xlab("Logprice")+
+  ylab("Count")+
+  ggtitle("Logged price distribution")+
+  theme_classic()+
+  theme(plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+        axis.title.x = element_text(size = 12, face = "bold", hjust = 0.5),
+        axis.title.y = element_text(size = 12, face = "bold", hjust = 0.5),
+        axis.text.x = element_text(size = 10, face = "plain", hjust = 0.5),
+        axis.line = element_line(size = 0.5, linetype = "solid", colour = "grey"),
+        legend.position = "right",
+        legend.title = element_text(size = 10, face = "bold", hjust = 0.5),
+        legend.text = element_text(size = 10, face = "plain", hjust = 0.5),
+        legend.spacing.y = unit(0.5,'cm'),
+        panel.grid.major = element_line(color = "lightgrey", 
+                                        size = 0.5, 
+                                        linetype = "solid", 
+                                        lineend = "round"),
+        panel.grid.minor = element_line(color = "lightgrey", 
+                                        size = 0.5, 
+                                        linetype = "dotted", 
+                                        lineend = "round"),
+        panel.background = element_rect(fill = "white", 
+                                        colour = "black", 
+                                        size = 2),
+        plot.background = element_rect(fill = "white", 
+                                       colour = "lightgrey", 
+                                       size = 2 ),
+        axis.ticks = element_blank())+
+  scale_fill_continuous(name = "Zoning", low = "blue", high = "pink")
+```
+
+The new variable "logprice" is normally distributed.
+
+### 3.1.3 The violin plot.
+
+```{r,echo=FALSE}
+
+# Plotting (violin plot)
+ggplot(train, aes(x = HouseStyle, y = SalePrice, fill = HouseStyle)) + 
+  geom_violin(draw_quantiles = c(0.25, 0.5, 0.75))+
+  xlab("Style of dwelling") +
+  ylab("Sale price") +
+  ggtitle("Sale price by house style") +
+  theme_classic()+
+  theme(plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+        axis.title.x = element_text(size = 14, face = "bold", hjust = 0.5),
+        axis.title.y = element_text(size = 14, face = "bold", hjust = 0.5),
+        axis.text.x = element_text(angle = 45, vjust = 1, size = 10, hjust = 1),
+        axis.line = element_line(size = 0.5, linetype = "solid", colour = "grey"),
+        legend.position = "right",
+        legend.title = element_text(size = 12, face = "bold", hjust = 0.5),
+        legend.text = element_text(size = 10, face = "plain", hjust = 0.5),
+        legend.spacing.x = unit(0.5,'cm'),
+        panel.grid.major = element_line(color = "lightgrey", size = 0.5, 
+                                        linetype = "solid", lineend = "round"),
+        panel.grid.minor = element_line(color = "lightgrey", size = 0.5,
+                                        linetype = "dotted", lineend = "round"),
+        plot.background = element_rect(fill = "white", colour = "lightgrey", size = 2 ))+
+  scale_fill_brewer(palette = "Paired")
+```
+
+According to the violin plot, house styles impact properties' sale price, and there is a noticeable difference in the median sale price. However, the variable does not make sense in the real world, as properties having one and a half stories are usually more expensive than properties having only one story even though they are still under construction. Hence, the variable will not be chosen for the final modelling.
+
+### 3.2 Properties' sale price by "Zoning".
+
+```{r,echo=FALSE}
+
+# Plotting.
+ggplot(train, aes(x = MSZoning, y = SalePrice, fill = MSZoning))+
+  geom_boxplot()+
+  geom_jitter(width = 0.3,alpha = 0.25,aes(color = factor(MSZoning)))+
+  stat_summary(fun = mean, 
+               geom = "point", 
+               shape = 20, 
+               size = 3, 
+               color = "tomato2",
+               fill = "tomato2") +
+  xlab("Zoning classification") +
+  ylab("Sale price") +
+  ggtitle("Sale price by zoning classification") +
+  theme_classic()+
+  theme(plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+        axis.title.x = element_text(size = 14, face = "bold", hjust = 0.5),
+        axis.title.y = element_text(size = 14, face = "bold", hjust = 0.5),
+        axis.text.x = element_text(angle = 45, vjust = 1, size = 10, hjust = 1),
+        axis.line = element_line(size = 0.5, linetype = "solid", colour = "grey"),
+        legend.position = "right",
+        legend.title = element_text(size = 12, face = "bold", hjust = 0.5),
+        legend.text = element_text(size = 10, face = "plain", hjust = 0.5),
+        legend.spacing.x = unit(0.5,'cm'),
+        panel.grid.major = element_line(color = "lightgrey", size = 0.5, 
+                                        linetype = "solid", lineend = "round"),
+        panel.grid.minor = element_line(color = "lightgrey", size = 0.5, 
+                                        linetype = "dotted", lineend = "round"),
+        plot.background = element_rect(fill = "white", colour = "lightgrey", size = 2 ))+
+  scale_fill_brewer(palette = "Paired")
+```
+
+The median sale price of floating villages is the highest among all five regions, while commercially residential properties have the lowest median sale price. Although residential properties with low-density levels have a lower median sale price than floating villages, many outliers fall into this category, indicating that "Zoning" is not the only factor in determining properties' sale price. An outlier test also needs to be undertaken before the modelling.
+
+### 3.3 Properties' sale price by "Foundation".
+
+```{r,echo=FALSE}
+
+# Prepare to change facet labels
+Zoning <- list(
+  'C (all)'= "Commercial",
+  'FV'= "Floating Vill",
+  'RH'= "Residential H",
+  'RL'= "Residential L",
+  'RM'= "Residential M"
+)
+
+Zoning_labeller <- function(variable,value){
+  return(Zoning[value])
+}
+  
+#bin2d function, remedy overplotting, as jitter not works as been expected.
+
+ggplot(train,aes(x= LotArea, y = SalePrice))+
+  geom_bin2d(aes(fill = factor(Foundation)))+
+  xlab("Lot size in square feet") +
+  ylab("Sale price") +
+  ggtitle("Relationship between lot size and sale price by zoning classification") +
+  scale_fill_discrete(name = "Foundation")+
+  scale_x_continuous(labels = scales::comma)+
+  facet_wrap(MSZoning ~ ., labeller=Zoning_labeller)+
+  theme_classic()+
+  theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.35),
+        axis.title.x = element_text(size = 14, face = "bold", hjust = 0.5),
+        axis.title.y = element_text(size = 14, face = "bold", hjust = 0.5),
+        axis.text.x = element_text(angle = 45, vjust = 1, size = 10, hjust = 1),
+        axis.line = element_line(size = 0.5, linetype = "solid", colour = "grey"),
+        legend.position = "right",
+        legend.title = element_text(size = 12, face = "bold", hjust = 0.5),
+        legend.text = element_text(size = 10, face = "plain", hjust = 0.5),
+        legend.spacing.y = unit(0.5,'cm'),
+        panel.grid.major = element_line(color = "lightgrey", size = 0.5, 
+                                        linetype = "solid", lineend = "round"),
+        panel.grid.minor = element_line(color = "lightgrey", size = 0.5, 
+                                        linetype = "dotted", lineend = "round"),
+        panel.background = element_rect(fill = "white", colour = "black", size = 2),
+        plot.background = element_rect(fill = "white", colour = "lightgrey", size = 2 ))
+```
+
+The sale price of properties having the same type of foundation increases as the lot size goes up. The poured concrete foundation has been widely used to build properties in the two most expensive regions, namely, floating villages and residential properties with low-density levels. It verifies the assumption that the price varies between properties having a different type of foundation.
+
+### 3.4.1 The relationship between age and properties' sale price.
+
+```{r,echo=TRUE}
+# Create a new variable "age"
+train$age <- train$YrSold - train$YearBuilt
+```
+```{r,echo=FALSE}
+# Plotting.
+ggplot(data = train, mapping = aes(x = age, y = SalePrice))+
+  geom_point(pch = 21, aes(color = SalePrice))+
+  geom_jitter(width = 0.1,alpha = 0.3, aes(color = SalePrice))+
+  xlab("Age")+
+  ylab("Sale price")+
+  ggtitle("Relationship between magnitude and the number of stations reporting")+
+  geom_smooth(se = FALSE,
+              color = "yellowgreen", 
+              fill = "yellowgreen", 
+              method = "loess")+
+  theme_classic()+
+  theme(plot.title = element_text(size = 13, face = "bold", hjust = 0.35),
+        axis.title.x = element_text(size = 12, face = "bold", hjust = 0.5),
+        axis.title.y = element_text(size = 12, face = "bold", hjust = 0.5),
+        axis.text.x = element_text(angle = 45, vjust = 1, size = 10, hjust = 1),
+        axis.line = element_line(size = 0.5, linetype = "solid", colour = "grey"),
+        legend.position = "right",
+        legend.title = element_text(size = 12, face = "bold", hjust = 0.5),
+        legend.text = element_text(size = 10, face = "plain", hjust = 0.5),
+        legend.spacing.y = unit(0.5,'cm'),
+        panel.grid.major = element_line(color = "lightgrey", size = 0.5, 
+                                        linetype = "solid", lineend = "round"),
+        panel.grid.minor = element_line(color = "lightgrey", size = 0.5, 
+                                        linetype = "dotted", lineend = "round"),
+        panel.background = element_rect(fill = "white", colour = "black", size = 2),
+        plot.background = element_rect(fill = "white", colour = "lightgrey", size = 2 ))+
+  scale_color_gradient(name = "Price", low = "cornflowerblue", high = "tomato2")
+```
+
+Older properties are cheaper than the newly built ones, but the price gap is not as large as been expected. Also, there are a large number of outliers, so remodel age should also be used in the final modelling.
+
+### 3.4.2 The relationship between age_remodel and properties' sale price.
+
+```{r,echo=TRUE}
+# Create a new variable "age_remodel"
+train$age_remodel <- train$YrSold - train$YearRemodAdd
+```
+```{r,echo=FALSE}
+# Plotting.
+ggplot(data = train, mapping = aes(x = age_remodel, y = SalePrice))+
+  geom_point(pch = 21, aes(color = SalePrice))+
+  geom_jitter(width = 0.1,alpha = 0.3, aes(color = SalePrice))+
+  xlab("Age (remodel)")+
+  ylab("Sale price")+
+  ggtitle("Relationship between magnitude and the number of stations reporting")+
+  geom_smooth(se = FALSE,
+              color = "yellowgreen", 
+              fill = "yellowgreen", 
+              method = "loess")+
+  theme_classic()+
+  theme(plot.title = element_text(size = 13, face = "bold", hjust = 0.35),
+        axis.title.x = element_text(size = 14, face = "bold", hjust = 0.5),
+        axis.title.y = element_text(size = 14, face = "bold", hjust = 0.5),
+        axis.text.x = element_text(angle = 45, vjust = 1, size = 10, hjust = 1),
+        axis.line = element_line(size = 0.5, linetype = "solid", colour = "grey"),
+        legend.position = "right",
+        legend.title = element_text(size = 12, face = "bold", hjust = 0.5),
+        legend.text = element_text(size = 10, face = "plain", hjust = 0.5),
+        legend.spacing.y = unit(0.5,'cm'),
+        panel.grid.major = element_line(color = "lightgrey", size = 0.5, 
+                                        linetype = "solid", lineend = "round"),
+        panel.grid.minor = element_line(color = "lightgrey", size = 0.5, 
+                                        linetype = "dotted", lineend = "round"),
+        panel.background = element_rect(fill = "white", colour = "black", size = 2),
+        plot.background = element_rect(fill = "white", colour = "lightgrey", size = 2 ))+
+  scale_color_gradient(name = "Price", low = "cornflowerblue", high = "tomato2")
+```
+
+From the second scatter plot, it can be seen that properties over 60 years old have all been remodelled. However, their price is far less than the newly built properties, ranging between \$100k and \$200k.
+
+### 3.5. Cluster analysis.
+
+```{r,echo=FALSE,warning=FALSE}
+
+# Install package "factoextra" if it is not installed.
+if(!("factoextra" %in% rownames(installed.packages()))){
+  install.packages("factoextra")
+  }else{
+  print("The package is in the library.")
+  }
+# Load the package "factoextra".
+library(factoextra)
+```
+
+**Step 1**
+
+Create a plot of the clusters using "fviz_nbclust()" function.
+
+```{r,echo=FALSE}
+# Step 1
+# Create a plot of the clusters
+na.omit(train[,sapply(train, is.numeric)]) %>% 
+  select(-c("MSSubClass","Id","YrSold","YearBuilt","YearRemodAdd","MoSold","logprice")) %>%
+  fviz_nbclust(FUNcluster=kmeans, method="wss")
+```
+
+**Step 2**
+
+Select k = 4 based on the above plot.
+
+Compute k-means with k = 4.
+
+```{r,echo=FALSE}
+
+# Select k = 4 based on the above plot.
+# Compute k-means with k = 4.
+
+km.res <- na.omit(train[,sapply(train, is.numeric)]) %>% 
+  select(-c("MSSubClass","Id","YrSold","YearBuilt","YearRemodAdd","MoSold","logprice")) %>% 
+  kmeans(4)
+```
+
+**Step 3**
+
+Create a new data frame "train_final".
+
+```{r,echo=TRUE}
+# Add the cluster numbers to the original data
+km.res$cluster <- as.factor(km.res$cluster)
+
+train_kmeans <- tibble(na.omit(train[,sapply(train, is.numeric)]), km.res$cluster)
+
+train_categorical <- train %>% dplyr::select(c("Id",where(is.character)))
+
+train_final <- train_kmeans %>% left_join(train_categorical,by ='Id') %>% 
+  relocate('km.res$cluster',.after = last_col())
+```
+
+**Step 4**
+
+Get cluster means.
+
+```{r,echo=FALSE}
+# Get cluster means 
+means_cluster <- train_final[,sapply(train_final, is.numeric)] %>% 
+  select(-c("MSSubClass","Id","YrSold","YearBuilt","YearRemodAdd","MoSold","logprice")) %>% 
+  aggregate(by=list(train_final$"km.res$cluster"), FUN=mean)
+
+head(means_cluster, n = 8)
+```
+
+All observations have been divided into four groups, and each group shares the same characteristics. It shows that properties with higher sale price tend to be newer, larger, and of better quality.
+
+Hence, variables relating to size and quality levels will be chosen in the final modelling.
+
+**Step 5**
+
+Create a boxplot demonstrating the relationship between overall quality levels and properties' sale price.
+
+```{r,echo=FALSE}
+
+# OverallQual
+ggplot(train_final,aes(x=as.factor(OverallQual), y = SalePrice ,fill = MSZoning ))+
+  geom_boxplot()+
+  geom_jitter(aes(col = as.factor(km.res$cluster)),alpha = 0.3)+
+  theme_classic()+
+  theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+        axis.title.x = element_text(size = 12, face = "bold", hjust = 0.5),
+        axis.title.y = element_text(size = 12, face = "bold", hjust = 0.5),
+        axis.text = element_text(size = 10, hjust = 0.5),
+        axis.line = element_line(size = 0.5, linetype = "solid", colour = "grey"),
+        legend.position = "right",
+        legend.title = element_text(size = 10, face = "bold", hjust = 0.5),
+        legend.text = element_text(size = 10, hjust = 1),
+        panel.grid.major = element_line(color = "lightgrey",size = 0.5, 
+                                        linetype = "solid", 
+                                        lineend = "round"),
+        panel.grid.minor = element_line(color = "lightgrey",size = 0.5, 
+                                        linetype = "dotted", lineend = "round"),
+        plot.background = element_rect(fill = "white", colour = "lightgrey", size = 2 ))
+
+```
+
+Cluster analysis indicates that properties of better quality are more expensive. In order to verify the assumption, a boxplot is created. There is a significant price gap between each quality levels.
+
+## 4. Further preprocessing
+
+```{r,echo=FALSE,warning=FALSE}
+# Install package "corrplot" if it is not installed.
+if(!("corrplot" %in% rownames(installed.packages()))){
+  install.packages("corrplot")
+  }else{
+  print("The package is in the library.")
+  }
+
+# Load the package "corrplot".
+library(corrplot)
+```
+
+### 4.1. Correlation heatmap (variables selected based on cluster analysis).
+
+```{r,echo=FALSE}
+var_numeric <- c("LotFrontage","LotArea","OverallQual",
+                 "MasVnrArea","BsmtFinSF1","BsmtUnfSF",
+                 "TotalBsmtSF","X1stFlrSF","X2ndFlrSF",
+                 "GrLivArea","BsmtFullBath","Fireplaces",
+                 "GarageCars","GarageArea","WoodDeckSF",
+                 "OpenPorchSF","ScreenPorch", "PoolArea",
+                 "SalePrice","age","age_remodel")
+
+colo <- colorRampPalette(c("#7F0000", "red", "#FF7F00", "yellow", "#7FFF7F", 
+                           "cyan", "#007FFF", "blue", "#00007F"))
+
+train_final[names(train_final) %in% var_numeric] %>% 
+  relocate('SalePrice',.after = last_col()) %>% cor() %>% 
+  corrplot(order = "hclust", addrect = 2, col = colo(10)) 
+```
+
+The graph displays the relationship between numeric variables chosen for the final modelling. Variable "age" has a negative relation with variables "SalePrice" and "OverallQual". Four variables, namely, "X1stFlrSF", "X2ndFlrSF", "BsmtFullBath" and "GarageArea", will be removed to avoid multicollinearity.
+
+```{r,echo=FALSE}
+# Install package "reshape2" if it is not installed.
+if(!("reshape2" %in% rownames(installed.packages()))){
+  install.packages("reshape2")
+  }else{
+  print("The package is in the library.")
+  }
+
+# Load the package "reshape2".
+library(reshape2)
+```
+
+### 4.2. Correlation heatmap (variables for the modelling).
+
+```{r,echo=FALSE}
+var_numeric_final <- c("LotFrontage","LotArea","OverallQual",
+                       "MasVnrArea","BsmtFinSF1","BsmtUnfSF",
+                       "TotalBsmtSF","GrLivArea","Fireplaces",
+                       "GarageCars","WoodDeckSF","OpenPorchSF",
+                       "ScreenPorch","PoolArea","SalePrice",
+                       "age","age_remodel")
+
+
+train_final[names(train_final) %in% var_numeric_final] %>% 
+  relocate('SalePrice',.after = last_col()) %>% cor() %>% melt() %>%
+  ggplot(aes(x = Var1, y=Var2, fill = value))+
+  geom_tile() +
+  scale_fill_gradient2(low = "yellowgreen", high = "tomato2", 
+                       mid = "white", midpoint = 0, limit = c(-1,1), 
+                       space = "lab", name = "Correlation") +
+  coord_fixed() +
+  xlab("Variable 1") +
+  ylab("Variable 2") +
+  ggtitle("Correlation Heat Map") +
+  theme(plot.title = element_text(size = 14, face = "bold.italic", hjust = 0.5),
+        legend.position = "right",
+        axis.text.x = element_text(angle = 45, vjust = 1, size = 8, hjust = 1),
+        axis.text.y = element_text(angle = 0,vjust = 1, size = 8, hjust = 1),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        plot.background = element_rect(fill = "white",colour = "lightgrey", size = 2))
+  
+```
+
+The graph shows the correlation of variables chosen for the final modelling. Despite the low correlation coefficient between variable "poolArea" and "SalePrice", variable "poolArea" will still be used in the final modelling to verify the previous assumption.
+
+## 5. Modelling
+
+```{r,echo=FALSE,warning=FALSE}
+# Install package "broom" if it is not installed.
+if(!("broom" %in% rownames(installed.packages()))){
+  install.packages("broom")
+  }else{
+  print("The package is in the library.")
+  }
+
+# Load the package "broom".
+library(broom)
+
+# Install package "DMwR2" if it is not installed.
+if(!("reshape2" %in% rownames(installed.packages()))){
+  install.packages("DMwR2")
+  }else{
+  print("The package is in the library.")
+  }
+
+# Load the package "DMwR2".
+library(DMwR2)
+```
+
+### 5.1. Pre-Modeling
+
+```{r,echo=TRUE}
+
+vari <- c("LotFrontage","LotArea","MasVnrArea",
+          "BsmtFinSF1","BsmtUnfSF","TotalBsmtSF",
+          "GrLivArea","WoodDeckSF","OpenPorchSF",
+          "ScreenPorch","PoolArea","SalePrice","age","age_remodel")
+
+
+z.train_final <- scale(train_final[names(train_final) %in% vari])
+lof.train_final <- lofactor(z.train_final, 5)
+
+print(which(lof.train_final > 1.5))
+print(train_final[which(lof.train_final > 1.5),])
+
+
+indx_outlier <- which(lof.train_final > 1.5)
+
+train_model <- train_final[-indx_outlier,]
+
+train_model$res_OveQ <- model.matrix(~OverallQual, data = train_model)
+
+train_model$res_Fire <- model.matrix(~Fireplaces, data = train_model)
+
+train_model$res_Foun <- model.matrix(~Foundation, data = train_model)
+
+train_model$res_KitQ <- model.matrix(~KitchenQual, data = train_model)
+
+train_model$res_GarC <- model.matrix(~GarageCars, data = train_model)
+
+train_model$res_Zone <- model.matrix(~MSZoning, data = train_model)
+
+train_model$res_SalT <- model.matrix(~SaleType, data = train_model)
+```
+
+Remove outliers using lofactor() function.
+
+Use model.matrix() funtion to create tables of dummy (categorical) variables.
+
+Variable "SaleType" will be used in the modelling to assess the impact of fire sale.
+
+### 5.2.1 Model 1
+
+```{r,ecHo=TRUE}
+
+model1 <- lm(formula = SalePrice ~ LotFrontage + LotArea  + 
+               MasVnrArea + BsmtFinSF1 + BsmtUnfSF + TotalBsmtSF + 
+               GrLivArea + WoodDeckSF + OpenPorchSF + ScreenPorch + 
+               PoolArea + age + age_remodel + res_OveQ + res_Foun + 
+               res_KitQ + res_GarC + res_Fire + res_Zone + res_SalT,
+             data = train_model,na.action=na.exclude)
+
+broom::tidy(model1)
+broom::glance(model1)
+```
+
+The Adjusted R-squared of model 1 is 0.8922, indicating that model 1 explains 89.59% of the variability of the response data around its mean.
+
+Variable "res_KitQ" is meaningless and will be removed as it has a negative relation with the variable "SalePrice".
+
+Variable "res_SalT" will also be removed as it is not significant.
+
+In the regression model, "res_FounFoundationStone" has a higher value than "res_FounFoundationPConc", which shows a different trend to the graph previously created, so the variable "res_Foun" will be removed as well.
+
+Variable "res_Zone" will be kept for further assessment.
+
+### 5.2.2 Model 2
+
+```{r,echo=TRUE}
+
+model2 <- lm(formula = SalePrice ~ LotFrontage + LotArea  + 
+               MasVnrArea + BsmtFinSF1 + TotalBsmtSF + 
+               GrLivArea + WoodDeckSF + OpenPorchSF + ScreenPorch + 
+               PoolArea + age + age_remodel + res_OveQ + res_GarC + 
+               res_Fire + res_Zone , data = train_model,na.action=na.exclude)
+
+broom::tidy(model2)
+broom::glance(model2)
+```
+
+The Adjusted R-squared of model 2 is 0.8654, indicating that model 2 explains 86.54% of the variability of the response data around its mean.
+
+Variable "LotFrontage" has become not significant.
+
+Variables "res_Zone" will still be kept for further assessment.
+
+### 5.2.3 Model 3 (log transformation)
+
+```{r,echo=TRUE}
+
+# Use "logprice" instead of "SalePrice"
+model3 <- lm(formula = logprice ~ LotFrontage + LotArea  +
+                BsmtFinSF1 + TotalBsmtSF + 
+               GrLivArea + WoodDeckSF + OpenPorchSF + ScreenPorch + 
+                age + age_remodel + 
+               res_OveQ  + res_GarC + res_Fire +
+               res_Zone , data = train_model,na.action=na.exclude)
+
+broom::tidy(model3)
+broom::glance(model3)
+```
+
+The Adjusted R-squared of model 3 is 0.8923, indicating that model 3 explains 89.23% of the variability of the response data around its mean.
+
+All variables are significant and make sense, as they show similar trends to the graphs previously created.
+
+## 6. Evaluation
+
+### 6.1. Data preprocessing for the "test" dataset.
+
+```{r,echo=TRUE}
+
+# Combine two data frames.
+test <- test %>% left_join(sample,by ='Id')
+
+# Remove columns having more than 40 per cent of NAs.
+test <- test[lapply(test, function(x) sum(is.na(x)) / length(x) ) < 0.4]
+
+# Create variables that will be used in the prediction.
+test$age <- test$YrSold - test$YearBuilt
+
+test$age_remodel <- test$YrSold - test$YearRemodAdd
+
+test$logprice=log(test$SalePrice+1)
+
+# remove all NAs in numeric columns and create a new data frame "test_model".
+test_numeric <- test %>% dplyr::select(c("Id",where(is.numeric)))
+
+test_categorical <- test %>% dplyr::select(c("Id",where(is.character)))
+
+test_model <- na.omit(test_numeric) %>% left_join(test_categorical,by ='Id') 
+
+# Remove NAs in the column "MSZoning".
+test_model <- test_model[complete.cases(test_model$MSZoning),]
+
+# create tables of dummy (categorical) variables.
+test_model$res_OveQ <- model.matrix(~OverallQual, data = test_model)
+
+test_model$res_Fire <- model.matrix(~Fireplaces, data = test_model)
+
+test_model$res_GarC <- model.matrix(~GarageCars, data = test_model)
+
+test_model$res_Zone <- model.matrix(~MSZoning, data = test_model)
+```
+
+### 6.2. Prediction.
+
+```{r,echo=TRUE}
+
+prediction_1 <- model2 %>% predict(test_model)
+
+prediction_2 <- model3 %>% predict(test_model)
+
+head(prediction_1, n = 8)
+
+head(prediction_2, n = 8)
+```
+
+### 6.3. Check RMSE.
+
+```{r,echo=TRUE}
+
+sqrt(mean((prediction_1 - test_model$SalePrice) ^ 2))
+
+sqrt(mean((prediction_2 - test_model$logprice) ^ 2))
+
+```
+
+### 6.4. Plotting for residuals.
+
+```{r,echo=TRUE}
+
+# Model 2
+par(mfrow=c(1, 2))
+plot(model2, 1)
+plot(model2, 4)
+
+# Model 3
+par(mfrow=c(1, 2))
+plot(model3, 1)
+plot(model3, 4)
+
+```
+
+The RMSE of model 2 is high, meaning that it still needs to be revised. The RMSE of model 3 is low, indicating better fit and thus being more successful. 
+
+One important assumption of using linear regression is that the residual plot should look very random, but the second model's residual plot is curved and indicates a nonlinear relationship, highlighting the importance of log transformation when the original data are skewed.
+
+## 7. Recommendations
+
+The project's findings are that properties' sale price is driven by factors including quality levels, age, garage spaces, locations, and pool area. For sellers who want to increase the sale price, renovation can be one of the effective means. Model 3 can better reflect the relationship between properties' sale price than Model 2 since it has a significantly lower RMSE(0.375437 versus 74093.83). It can be achieved by using log transformation (using variable "logprice" instead).
+
+Future improvements can be made by increasing the sample size, adding variables that are not covered in the data set, such as inflation rate, the ranking of public schools, crime rate, the market value of the land, type of properties (house, townhouse, apartment), etc.,
+
+From the accounting point of view, land can only be revaluated. If the price of the land that a property stands is high enough, it can be sold at a high experience even it is old.
+
+## 8. Reference
+
+1.  <https://www.kaggle.com/c/house-prices-advanced-regression-techniques>
+
+2.  Elhag, T.M.S. and Boussabaine, A.H., 1999, September. Evaluation of construction costs and time attributes. In Proceedings of the 15th ARCOM Conference (Vol. 2, No. 15‐17 September, pp. 473-80). Liverpool John Moores University.

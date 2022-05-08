@@ -1,0 +1,545 @@
+# Quiz 2 part 1
+
+# Clean all global variables
+rm(list = ls())
+
+# Clean Console as command (CTRL + L)
+cat("\014") 
+
+# Check if the packages are available
+if(!("caret" %in% rownames(installed.packages()))) {
+  install.packages("caret")} else {
+    print("The package is in the library.")
+    }
+
+if(!("ggplot2" %in% rownames(installed.packages()))) {
+  install.packages("ggplot2")} else {
+    print("The package is in the library.")
+  }
+
+# Load the package
+library(ggplot2)
+library(caret)
+
+# QUESTION A
+
+# ********************* Question 1 **************************************
+
+# Create a scatter plot of monitoring quake magnitude against stations.
+names(quakes)
+
+# View the number of missing values for each variable
+colSums(is.na(quakes))
+
+ggplot(data = quakes, mapping = aes(x = mag, y = stations))+
+  geom_point()+
+  xlab("Magnitude")+
+  ylab("Number of stations reporting")+
+  ggtitle("Relationship between magnitude and the number of stations reporting")+
+  theme_classic()+
+  theme(plot.title = element_text(size = 12, face ="bold",hjust = 0.50),
+        axis.title.x = element_text(size = 10, face ="bold",hjust = 0.5),
+        axis.title.y = element_text(size = 10, face ="bold",hjust = 0.5))
+
+
+# ********************* Question 2 **************************************
+
+# Functions and elements that can be added include geom_jitter(), geom_smooth(),
+# scale_color_gradient, color, alpha and themes. 
+# With these functions and elements, we can make our plots more vivid and intepretable.
+
+# Explanation
+# geom_jitter(), displace points and prevent over plotting.
+# geom_smooth(), help us check the relationship.
+# scale_color_gradient & color, allows us to control the colors used and better understand the plot.
+# theme, customise the non data components of plots.
+
+ggplot(data = quakes, mapping = aes(x = mag, y = stations))+
+  geom_point(pch = 21, aes(color = mag))+
+  geom_jitter(width = 0.1,alpha = 0.3, aes(color = mag))+
+  xlab("Magnitude")+
+  ylab("Number of stations reporting")+
+  ggtitle("Relationship between magnitude and the number of stations reporting")+
+  geom_smooth(se = FALSE,
+              color = "yellowgreen", 
+              fill = "yellowgreen", 
+              method = "loess")+
+  theme_classic()+
+  theme(plot.title = element_text(size = 12, face = "bold", hjust = 0.5),
+        axis.title.x = element_text(size = 10, face = "bold", hjust = 0.5),
+        axis.title.y = element_text(size = 10, face = "bold", hjust = 0.5),
+        axis.line = element_line(size = 0.5, linetype = "solid", colour = "grey"),
+        legend.title = element_text(size = 10, face = "bold", hjust = 0.5),
+        legend.position = "right",
+        panel.grid.major = element_line(color = "lightgrey",size = 0.5, linetype = "solid", lineend = "round"),
+        panel.grid.minor = element_line(color = "lightgrey",size = 0.5, linetype = "dotted", lineend = "round"))+
+  scale_color_gradient(name = "Magnitude", low = "cornflowerblue", high = "tomato2")
+
+
+# ********************* Question 3 **************************************
+
+# In order to analyse the relationships between mag and stations,
+# we need to know the correlation between mag and stations.
+
+if(!("GGally" %in% rownames(installed.packages()))) {
+  install.packages("GGally")} else {
+    print("The package is in the library.")
+  }
+
+library(GGally)
+
+# STEP 1 - ggcorr
+ggcorr(quakes)
+
+# As shown in the plot, there is a direct correlation between two variables.
+
+help(quakes)
+
+# Logical presumption: The cause of this trend is the higher magnitude, 
+# the higher probability of being detected by stations.
+
+# STEP 2 - calculate the correlation value.
+round(cor(quakes$mag,quakes$stations),2)
+
+# The correlation coefficient is 0.85, meaning that there is a high positive correlation.
+
+
+# ********************* Question 4 **************************************
+
+# We should check the trend because correlation coefficient explains how much variability of one factor 
+# can be caused by its relationship to another related factor.
+
+# Our assumption may be false because other variables, for example, depth,
+# may also has a direct impact on the variable stations.
+# Also, the plot is less accurate when compared with the calculation result. 
+# With plot, we know there is a relation between two variables, but don't know how much have these two variables related. 
+
+
+# ********************* Question 5 **************************************
+
+# Add the color setting (depth).
+ggplot(data = quakes, mapping = aes(x = mag, y = stations))+
+  geom_point(pch = 21, aes(color = depth))+
+  geom_jitter(width = 0.1,alpha = 0.3, aes(color = depth))+
+  xlab("Magnitude")+
+  ylab("Number of stations reporting")+
+  ggtitle("Relationship between magnitude and the number of stations reporting")+
+  geom_smooth(se = FALSE,
+              color = "yellowgreen", 
+              fill = "yellowgreen", 
+              method = "loess")+
+  theme_classic()+
+  theme(plot.title = element_text(size = 12, face = "bold",hjust = 0.5),
+        axis.title.x = element_text(size = 10, face = "bold",hjust = 0.5),
+        axis.title.y = element_text(size = 10, face = "bold",hjust = 0.5),
+        axis.line = element_line(size = 0.5, linetype = "solid", colour = "grey"),
+        legend.title = element_text(size = 10, face = "bold", hjust = 0.5),
+        legend.position = "right",
+        panel.grid.major = element_line(color = "lightgrey",size = 0.5, linetype = "solid", lineend = "round"),
+        panel.grid.minor = element_line(color = "lightgrey",size = 0.5, linetype = "dotted", lineend = "round"))+
+  scale_color_gradient(name = "Depth", low = "cornflowerblue", high = "tomato2")
+
+# It seems that depth also has an impact on the variable stations.
+# However, it is less significant than the variable magnitude.
+
+# To verify the assumption, we need to use correlation heat maps.
+
+if(!("reshape2" %in% rownames(installed.packages()))) {
+  install.packages("reshape2")} else {
+    print("The package is in the library.")
+  }
+library(reshape2)
+
+ggplot(melt(cor(quakes[,sapply(quakes, is.numeric)])), aes(x = Var1, y=Var2, fill = value))+
+  geom_tile()+
+  scale_fill_gradient2(low = "yellowgreen", high = "tomato2", mid = "white",
+                       midpoint = 0, limit = c(-1,1), space = "lab",
+                       name = "Correlation")+
+  coord_fixed()+
+  xlab("Variable 1")+
+  ylab("Variable 2")+
+  ggtitle("Correlation Heat Map")+
+  theme(plot.title = element_text(size = 14, face = "bold.italic", hjust = 0.5),
+        legend.position = "right",
+        axis.text.x = element_text(angle = 45, vjust = 1, size = 8, hjust = 1),
+        axis.text.y = element_text(vjust = 1, size = 8, hjust = 1),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        plot.background = element_rect(fill = "white",colour = "lightgrey", size = 2))
+  
+# According to the correlation heat map, there is no significant relationship between the variables depth and stations. 
+# Hence, the previous assumption has to be rejected.
+
+
+# ********************* Question 6 **************************************
+
+# Scatter plot(basic)
+ggplot(data = quakes, mapping = aes(x = lat, y = long))+
+  geom_point()+
+  xlab("Latitude")+
+  ylab("Longtitude")+
+  ggtitle("Relationship between latitude and longtitude")+
+  theme_classic()+
+  theme(plot.title = element_text(size = 12, face ="bold",hjust = 0.5),
+        axis.title.x = element_text(size = 10, face ="bold",hjust = 0.5),
+        axis.title.y = element_text(size = 10, face ="bold",hjust = 0.5))
+
+
+# ********************* Question 7 **************************************
+
+# Functions or plots that can be added:
+# geom_jitter(), displace points and prevent over plotting.
+# geom_smooth(), help us check the relationship.
+# scale_color_gradient & color, allows us to control the colors used and better understand the plot;
+# in this plot, the function shows the magnitude of quakes in different locations.
+# theme, customise the non data components of plots.
+
+ggplot(data = quakes, mapping = aes(x = long, y = lat))+
+  geom_point(pch = 21, aes(color = mag))+
+  geom_jitter(width = 0.1,alpha = 0.3, aes(color = mag, size = mag))+
+  xlab("Longtitude")+
+  ylab("Latitude")+
+  ggtitle("Relationship between magnitude and the number of stations reporting")+
+  geom_smooth(se = TRUE,
+              color = "yellowgreen", 
+              fill = "yellowgreen", 
+              method = "loess")+
+  theme_classic()+
+  theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+        axis.title.x = element_text(size = 12, face = "bold", hjust = 0.5),
+        axis.title.y = element_text(size = 12, face = "bold", hjust = 0.5),
+        axis.line = element_line(size = 0.5, linetype = "solid", colour = "grey"),
+        legend.title = element_text(size = 8, face = "bold", hjust = 0),
+        legend.position = "right",
+        panel.grid.major = element_line(color = "lightgrey",size = 0.5, linetype = "solid", lineend = "round"),
+        panel.grid.minor = element_line(color = "lightgrey",size = 0.5, linetype = "dotted", lineend = "round"))+
+  scale_color_gradient(name = " Magnitude", low = "navy", high = "lightpink")
+
+
+# QUESTION B
+
+# ********************* Question 1 **************************************
+
+# Check if the packages are available
+if(!("tidyverse" %in% rownames(installed.packages()))) {
+  install.packages("tidyverse")} else {
+    print("The package is in the library.")
+  }
+
+library(tidyverse)
+
+names(mpg)
+
+df <- na.omit(mpg)
+
+df %>% group_by(manufacturer) %>% count()
+
+# There are 15 manufacturers in total.
+
+# ********************* Question 2 **************************************
+
+# Create a histogram of the hwy variable
+
+ggplot(data = df, mapping = aes(x = hwy, fill = ..count..))+
+  geom_histogram(binwidth = 2)+
+  xlab("Highway miles (per gallon)")+
+  ylab("Number of observations")+
+  ggtitle("Fuel economy of vehicles (Highway)")+
+  scale_fill_gradient(name = "Count", low = "navy", high = "lightpink")+
+  theme_classic()+
+  theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+        axis.title.x = element_text(size = 12, face = "bold", hjust = 0.5),
+        axis.title.y = element_text(size = 12, face = "bold", hjust = 0.5),
+        axis.line = element_line(size = 0.5, linetype = "solid", colour = "grey"),
+        legend.title = element_text(size = 10, face = "bold", hjust = 0.5),
+        legend.position = "right",
+        panel.grid.major = element_line(color = "lightgrey",size = 0.5, linetype = "solid", lineend = "round"),
+        panel.grid.minor = element_line(color = "lightgrey",size = 0.5, linetype = "dotted", lineend = "round"),
+        axis.ticks = element_blank())
+
+# Interpret the histogram
+# The distribution of fuel efficiency is bimodal,as it has two modes, 16 and 26 respectively.
+# Only few cars' fuel efficiency has overtaken 40 miles per gallon.
+
+# ********************* Question 3 **************************************
+
+# Create a stacked histogram (hwy)
+
+category <- table(df$cyl)
+
+category
+
+ggplot(data = df, mapping = aes(x = hwy))+
+  geom_histogram(aes(fill = factor(cyl)), position = position_stack(), binwidth = 2)+
+  xlab("Highway miles (per gallon)")+
+  ylab("Number of observations")+
+  ggtitle("Fuel economy of vehicles (Highway)")+
+  scale_fill_manual(name = "Number of cylinders", labels = c("4", "5", "6", "8"),
+                    values = c('#1b9e77','#d95f02','#7570b3','#e7298a'))+
+  theme_classic()+
+  theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+        axis.title.x = element_text(size = 12, face = "bold", hjust = 0.5),
+        axis.title.y = element_text(size = 12, face = "bold", hjust = 0.5),
+        axis.line = element_line(size = 0.5, linetype = "solid", colour = "grey"),
+        legend.title = element_text(size = 10, face = "bold", hjust = 0.5),
+        legend.position = "right",
+        panel.grid.major = element_line(color = "lightgrey",size = 0.5, linetype = "solid", lineend = "round"),
+        panel.grid.minor = element_line(color = "lightgrey",size = 0.5, linetype = "dotted", lineend = "round"),
+        axis.ticks = element_blank())
+
+# Interpret the histogram
+# We can see that there is a negative relationship between the number of cylinders and the highway miles.
+# A car will be less fuel efficient(lower highway miles) if it has more cylinders.
+
+# ********************* Question 4 **************************************
+
+# Create a histogram of the cty variable
+
+ggplot(data = df, mapping = aes(x = cty, fill = ..count..))+
+  geom_histogram(binwidth = 4)+
+  xlab("City miles (per gallon)")+
+  ylab("Number of observations")+
+  ggtitle("Fuel economy of vehicles (City)")+
+  scale_fill_gradient(name = "Count", low = "navy", high = "lightpink")+
+  theme_classic()+
+  theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+        axis.title.x = element_text(size = 12, face = "bold", hjust = 0.5),
+        axis.title.y = element_text(size = 12, face = "bold", hjust = 0.5),
+        axis.line = element_line(size = 0.5, linetype = "solid", colour = "grey"),
+        legend.title = element_text(size = 10, face = "bold", hjust = 0.5),
+        legend.position = "right",
+        panel.grid.major = element_line(color = "lightgrey",size = 0.5, linetype = "solid", lineend = "round"),
+        panel.grid.minor = element_line(color = "lightgrey",size = 0.5, linetype = "dotted", lineend = "round"))
+
+# Describe the distribution
+# The histogram is unimodal, and the fuel efficiency for most vehicles when driving on city roads is 16 miles per gallon.
+# Cars will be less fuel efficient when driving on city roads than when driving on highways.
+
+# ********************* Question 5 **************************************
+
+# Create a stacked histogram (cty)
+
+category <- table(df$cyl)
+
+category
+
+ggplot(data = df, mapping = aes(x = cty))+
+  geom_histogram(aes(fill = factor(cyl)), position = position_stack(), binwidth = 2)+
+  xlab("City miles (per gallon)")+
+  ylab("Number of observations")+
+  ggtitle("Fuel economy of vehicles (City)")+
+  scale_fill_manual(name = "Number of cylinders", labels = c("4", "5", "6", "8"),
+                    values = c('#1b9e77','#d95f02','#7570b3','#e7298a'))+
+  theme_classic()+
+  theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+        axis.title.x = element_text(size = 12, face = "bold", hjust = 0.5),
+        axis.title.y = element_text(size = 12, face = "bold", hjust = 0.5),
+        axis.line = element_line(size = 0.5, linetype = "solid", colour = "grey"),
+        legend.title = element_text(size = 10, face = "bold", hjust = 0.5),
+        legend.position = "right",
+        panel.grid.major = element_line(color = "lightgrey",size = 0.5, linetype = "solid", lineend = "round"),
+        panel.grid.minor = element_line(color = "lightgrey",size = 0.5, linetype = "dotted", lineend = "round"),
+        axis.ticks = element_blank())
+
+# Interpret the histogram
+# We can see that there is also a negative relationship between the number of cylinders and the city miles.
+# A car will be less fuel efficient(lower city miles) if it has more cylinders.
+
+#Comparison
+# Both distributions show the more cylinders a car owns, the lower fuel efficiency it has.
+# The difference between two distributions is that all vehicles, 
+# regardless of the number of cylinders they have, will be less fuel efficient when driving on city roads than when driving on highways.
+
+# ********************* Question 6 **************************************
+
+# Create a stacked bar plot.
+newdf <- as.data.frame(df %>% group_by(class, cyl) %>% 
+                         summarise(Count = n()))
+
+ggplot(data = newdf, mapping = aes(x = class, y = Count, fill = factor(cyl)))+
+  geom_bar(position = "stack", stat = "identity")+
+  xlab("Type of car")+
+  ylab("Number of observations")+
+  ggtitle("Number of cylinders that different types of cars own")+
+  scale_fill_manual(name = "Number of cylinders",
+                    labels = c("4", "5", "6", "8"),
+                    values = c("tomato2", "yellowgreen", "cornflowerblue", "steelblue"))+
+  theme_classic()+
+  theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+        axis.title.x = element_text(size = 12, face = "bold", hjust = 0.5),
+        axis.title.y = element_text(size = 12, face = "bold", hjust = 0.5),
+        axis.text.x = element_text(angle = 45, vjust = 1, size = 8, hjust = 1),
+        axis.line = element_line(size = 0.5, linetype = "solid", colour = "grey"),
+        legend.title = element_text(size = 10, face = "bold", hjust = 0.5),
+        legend.position = "right",
+        panel.grid.major = element_line(color = "lightgrey",size = 0.5, linetype = "solid", lineend = "round"),
+        panel.grid.minor = element_line(color = "lightgrey",size = 0.5, linetype = "dotted", lineend = "round"))
+
+# ********************* Question 7 **************************************
+
+# Rearrange the x axis (use the function reorder)
+# Function 
+
+mpg %>% group_by(class) %>% tally()
+
+ggplot(data = newdf, mapping = aes(x = reorder(class, Count), y = Count, fill = factor(cyl)))+
+  geom_bar(position = "stack", stat = "identity")+
+  xlab("Type of car")+
+  ylab("Number of observations")+
+  ggtitle("Number of cylinders that different types of cars own")+
+  scale_fill_manual(name = "Number of cylinders",
+                    labels = c(levels(as.factor(newdf$cyl))),
+                    values = c("tomato2", "yellowgreen", "cornflowerblue", "steelblue"))+
+  theme_classic()+
+  theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+        axis.title.x = element_text(size = 12, face = "bold", hjust = 0.5),
+        axis.title.y = element_text(size = 12, face = "bold", hjust = 0.5),
+        axis.text.x = element_text(angle = 45, vjust = 1, size = 8, hjust = 1),
+        axis.line = element_line(size = 0.5, linetype = "solid", colour = "grey"),
+        legend.title = element_text(size = 10, face = "bold", hjust = 0.5),
+        legend.position = "right",
+        panel.grid.major = element_line(color = "lightgrey",size = 0.5, linetype = "solid", lineend = "round"),
+        panel.grid.minor = element_line(color = "lightgrey",size = 0.5, linetype = "dotted", lineend = "round"))
+
+# Description 
+# SUV is the most popular class of car, while 2seater is the least popular one.
+
+# Trend of the 4 cylinder bars
+# Most compact cars have only 4 cylinders, while larger size cars, for example, suv and pickup,
+# have six or eight cylinders. Compact cars are more fuel efficient than larger size cars.
+
+# ********************* Question 8 **************************************
+
+# Type of color scale used in the bar plot above: scale_fill_manual.
+# It suits this type of plots because it allows colors to fill discrete visual objects.
+# It is useful in helping us gain insight because it can edit the name of legend title and tables,
+# and it can also choose the suitable colors for the plot.
+
+# ********************* Question 9 **************************************
+
+# Create a bivariate bar plot.
+
+df2 <- df %>% group_by(fl) %>% summarise(median_cty = median(cty), median_hwy = median(hwy))
+
+View(df2)
+
+# median cty
+ggplot(data = df2, mapping = aes(x = reorder(fl,median_cty), y = median_cty))+
+  geom_bar(aes(fill = fl), stat = "identity")+
+  xlab("Fuel type")+
+  ylab("Median_city miles (per gallon)")+
+  ggtitle("Fuel types and meidan city miles")+
+  scale_fill_manual(name = "Fuel type",
+                    labels = c(levels(as.factor(df2$fl))),
+                    values = c("tomato2", "yellowgreen", "cornflowerblue", "steelblue","slateblue4"))+
+  theme_classic()+
+  theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+        axis.title.x = element_text(size = 12, face = "bold", hjust = 0.5),
+        axis.title.y = element_text(size = 12, face = "bold", hjust = 0.5),
+        axis.text = element_text(size = 10, hjust = 0.5),
+        axis.line = element_line(size = 0.5, linetype = "solid", colour = "grey"),
+        legend.position = "right",
+        legend.title = element_text(size = 10, face = "bold", hjust = 0.5),
+        legend.text = element_text(size = 10, hjust = 1),
+        panel.grid.major = element_line(color = "lightgrey",size = 0.5, linetype = "solid", lineend = "round"),
+        panel.grid.minor = element_line(color = "lightgrey",size = 0.5, linetype = "dotted", lineend = "round"))
+
+# median hwy
+ggplot(data = df2, mapping = aes(x = reorder(fl,median_hwy), y = median_hwy))+
+  geom_bar(aes(fill = fl), stat = "identity")+
+  xlab("Fuel type")+
+  ylab("Median_highway miles (per gallon)")+
+  ggtitle("Fuel types and meidan highway miles")+
+  scale_fill_manual(name = "Fuel type",
+                    labels = c(levels(as.factor(df2$fl))),
+                    values = c("tomato2", "yellowgreen", "cornflowerblue", "steelblue","slateblue4"))+
+  theme_classic()+
+  theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+        axis.title.x = element_text(size = 12, face = "bold", hjust = 0.5),
+        axis.title.y = element_text(size = 12, face = "bold", hjust = 0.5),
+        axis.text = element_text(size = 10, hjust = 0.5),
+        axis.line = element_line(size = 0.5, linetype = "solid", colour = "grey"),
+        legend.position = "right",
+        legend.title = element_text(size = 10, face = "bold", hjust = 0.5),
+        legend.text = element_text(size = 10, hjust = 1),
+        panel.grid.major = element_line(color = "lightgrey",size = 0.5, linetype = "solid", lineend = "round"),
+        panel.grid.minor = element_line(color = "lightgrey",size = 0.5, linetype = "dotted", lineend = "round"))
+
+# ********************* Question 10 **************************************
+
+#Describe the trends and compare the plots.
+#Both bar plots show the similar tend,
+# and "d" is the most efficient type of fuel, while "e" is the least efficient type of fuel.
+# "c" is the second most efficient type of fuel, followed by "p" and "r".
+
+# ********************* Question 11 **************************************
+
+# Create parallel boxplots.
+
+ggplot(df, aes(x = reorder(manufacturer,cty), y = cty)) + 
+  geom_boxplot(aes(fill = manufacturer)) +
+  stat_summary(fun = mean, 
+               geom = "point", 
+               shape = 20, 
+               size = 3, 
+               color = "pink",
+               fill = "pink") +
+  xlab("Manufacturer") +
+  ylab("City miles (per gallon)") +
+  ggtitle("City miles per gallon by manufacturer") +
+  theme_bw()+
+  theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+        axis.title.x = element_text(size = 12, face = "bold", hjust = 0.5),
+        axis.title.y = element_text(size = 12, face = "bold", hjust = 0.5))
+
+# Interpret the boxplot.
+# Variable manufacturer has a great impact on city miles per gallon.
+# Location and spread of data between levels is not so clear,
+# since percentiles and IQRs vary between subgroups.
+# Some of the maunfactuers, for example, toyota and dodge, have a larger spread over the cty variable, 
+# whereas the others, like mercury, seems to max out near the same point.
+# There are outliers in some of the sub boxplots, for example, honda and volkswagen.
+
+
+# ********************* Question 12 **************************************
+
+# A function that can be added to the boxplot is called geom_jitter().
+# It remedies the problem of overplotting and allows us to see all the points and their rough distributions.
+# We can use factor in the function geom_jitter(). In the plot above, points have different colors based on the number of cylinders.
+# Alpha is another useful function that can help reduce overplotting by lowering the transperency of points.
+# Theme helps customise the non data components of plots to make the plots more readable.
+
+# The plot is the same as the plot in Q11.
+ggplot(df, aes(x = reorder(manufacturer,cty), y = cty)) + 
+  geom_boxplot(aes(fill = manufacturer)) +
+  geom_jitter(width = 0.2,alpha = 0.3,aes(color = factor(cyl)))+
+  stat_summary(fun = mean, 
+               geom = "point", 
+               shape = 20, 
+               size = 3, 
+               color = "pink",
+               fill = "pink") +
+  xlab("Manufacturer") +
+  ylab("City miles (per gallon)") +
+  ggtitle("City miles per gallon by manufacturer") +
+  theme_classic()+
+  theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+        axis.title.x = element_text(size = 12, face = "bold", hjust = 0.5),
+        axis.title.y = element_text(size = 12, face = "bold", hjust = 0.5),
+        axis.text.x = element_text(angle = 45, vjust = 1, size = 8, hjust = 1),
+        axis.line = element_line(size = 0.5, linetype = "solid", colour = "grey"),
+        legend.position = "bottom",
+        legend.title = element_text(size = 10, face = "bold", hjust = 0.5),
+        panel.grid.major = element_line(color = "lightgrey",size = 0.5, linetype = "solid", lineend = "round"),
+        panel.grid.minor = element_line(color = "lightgrey",size = 0.5, linetype = "dotted", lineend = "round"))
+
+# Interpret the boxplot.
+# Variable manufacturer does not have a significant impact on city miles per gallon.
+# What really matters is the number of cylinders that cars have.
+# The location (percentiles) differs between subgroups.
+# The variation (interquartile range) also differs between subgroups.
+# This is because some manufacturers, like dodge and toyota, manufacture cars with different number of cylinders concurrently,
+# so their IQRs are larger than that of manufacturers manufacturing only one kind of cars, for example, honda and subaru.
+# There are outliers in some of the sub boxplots, for example, honda and volkswagen.
+
+# *************************End**************************

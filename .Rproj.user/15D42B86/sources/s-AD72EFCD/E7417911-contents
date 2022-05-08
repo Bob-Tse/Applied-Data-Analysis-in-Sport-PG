@@ -1,0 +1,164 @@
+---
+title: "Modelling on the basketball data"
+author: "Xucheng XIE"
+date: "23/04/2022"
+output:
+  html_document:
+    keep_md: yes
+    theme: cerulean
+    highlight: haddock
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(dev = "png",
+                      dpi = 300, 
+                      echo = TRUE,
+                      fig.path = "figs/")
+
+```
+
+## 1. Introduction
+
+### a) Relevant background information of basketball 
+
+Basketball is the third most popular sport in the world, with 2.2 billion fans worldwide. There are two popular types of basketball games, 3x3 and 5x5. Unlike 5x5, which is played on a full-scale basketball court, 3x3 is played on a half-court. The National Basketball Association (NBA) is a men's professional Basketball league consisting of 30 professional teams in North America. It is one of the four major professional sports leagues in the United States. 
+
+#### Position requirements
+
+According to the NBA's rulebook, each team consists of five players, and each player will be assigned a specific position, namely, center, power forward, small forward, point guard and shooting guard. Shane (2018) suggests that the center is the heart of formation, with the point guard ranked second. The center is the tallest player in a team, being responsible for rim protection, while the point guard is the shortest player in a team, playing a vital role in running the offence, and that is the reason why the point guard is sometimes called the "floor general" by the masses.
+
+```{r , echo=FALSE, out.width='50%', fig.align='center'}
+knitr::include_graphics("images/Basketball_Positions.png")
+```
+
+#### Key metrics
+
+Basketball statistics have been kept to evaluate players' and teams' performance. Some typical examples of basketball statistics include `points (PTS)`, `efficiency (EFF)`, `steals (STL)`, `rebounds (REB)` and `field goal attempt (FGA)`. Haefner (2022) highlights the four most important stats that should be paid attention to are `field Goal attempts (FGA)`, `effective field goal percentage (EFG%)`, `free throw attempts (FTA)` and `free throw percentage (FT%)`. All these four ratios indicate the chance of winning; the higher the ratios, the higher the possibility of winning the game. Ibáñez et al. (2008) use discriminant analysis to identify factors driving a team's long-term success. The result shows that `successful free throws (FT)`, `rebounds (REB)`, `assists (AST)`, `steals (STL)` and `blocks (BLK)` are key differences between the best and worst teams. Fayad (2020) scrapes data from [basketball-reference.com](https://www.basketball-reference.com/) and builds a model using the random forest algorithm. He suggests that the team's `net rating (NRtg)` and `home-court advantage` also greatly influence wins.
+
+### b) Description of the scenario
+
+Chicago Bulls are an American professional basketball team headquartered in Chicago. In the most recent season (2018-19), the team was ranked 27th for overall performance and 26th for payroll budget out of thirty teams. In the new season (2019-20), Chicago Bulls will be assigned $118 million for players' contracts.
+
+### c) The aim of the project
+
+The project aims to help Chicago Bulls make the best use of the payroll budget and find the best starting player for each position.
+
+### d) Justification and importance
+
+Players are decisive to a team's long-term success, so it is crucial for managers to find suitable players for their teams. A team that owns players with higher ratings are more likely to win the game. However, some players are unaffordable due to the limited payroll budget, so managers need to balance the team's strength and funding, ensuring every buck is well spent.
+
+## 2. Reading and cleaning the raw data
+
+#### Description of datasets and variables
+
+
+
+#### Load required packages
+
+Three packages will be used in the data wrangling process.
+
+```{r packages, message=FALSE, warning=FALSE}
+# Packages required
+pkgs <- c("tidyverse","naniar")
+
+# Load the packages using a loop
+for (i in 1:length(pkgs)){
+  if(!(pkgs[i] %in% rownames(installed.packages()))){
+    install.packages(pkgs[i])}
+  library(pkgs[i],character.only=TRUE)
+  }
+```
+
+#### Reading the data
+
+Read the files using the `read_csv()` function from the `readr` package.
+
+```{r reading_data, message=FALSE}
+# CSV files in the "data" folder
+files <- list.files("data", pattern = "csv$") 
+
+# Names of the datasets
+file_name <- gsub(pattern = ".csv", "",files)
+
+# Empty list
+emty_list <- list()
+
+# Read the data using a loop
+for (i in 1:length(files)){
+  emty_list[[i]] <- read_csv(paste0("data/",files[i]))
+  assign(file_name[i],emty_list[[i]]) 
+}
+
+# Keep only five datasets
+rm(list=setdiff(ls(),file_name))
+```
+
+#### Cleaning the data
+
+Display the internal structure of datasets using the `str()` function from `Base-R` and check the existence of missing values with the `any_na()` function from the `naniar` package.
+
+**1. dataset "2018-19_nba_player-salaries" **
+```{r dataset_1, message=FALSE}
+# Structure
+str(`2018-19_nba_player-salaries`)
+
+# Missing values (no missing values have been found)
+any_na(`2018-19_nba_player-salaries`)
+```
+
+**2. dataset "2018-19_nba_player-statistics"**
+```{r dataset_2, message=FALSE}
+# Structure
+str(`2018-19_nba_player-statistics`)
+
+# Missing values (missing values have been found, and further action is required)
+any_na(`2018-19_nba_player-statistics`)
+```
+
+**3. dataset "2018-19_nba_team-statistics_1"**
+```{r dataset_3, message=FALSE}
+# Structure
+str(`2018-19_nba_team-statistics_1`)
+
+# Missing values (missing values have been found, and further action is required)
+any_na(`2018-19_nba_team-statistics_1`)
+```
+
+**4. dataset "2018-19_nba_team-statistics_2"**
+```{r dataset_4, message=FALSE}
+# Structure
+str(`2018-19_nba_team-statistics_2`)
+
+# Missing values (no missing values have been found)
+any_na(`2018-19_nba_team-statistics_2`)
+```
+
+**5. dataset "2019-20_nba_team-payroll"**
+```{r dataset_5, message=FALSE}
+# Structure
+str(`2019-20_nba_team-payroll`)
+
+# Convert the class of the variable "salary" from character to number
+`2019-20_nba_team-payroll`$salary <- parse_number(`2019-20_nba_team-payroll`[['salary']])
+
+# Missing values (no missing values have been found)
+any_na(`2019-20_nba_team-payroll`)
+```
+
+## 3. Exploratory analysis
+
+### a) Checking for errors and missing values within the datasets
+
+### b) Checking for the distribution of variables
+
+### c) Checking for relationships between variables, or differences between groups
+
+### d) Justification for decisions made about data modelling.
+# 4. Data modelling and results
+
+
+# 5. Player recommendations
+
+# 6. Summary
+
+# 7. Reference list

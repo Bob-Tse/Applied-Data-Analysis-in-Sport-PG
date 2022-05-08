@@ -1,0 +1,181 @@
+# Practice 1
+
+# Clean Console as command (CTRL + L)
+cat("\014") 
+
+# Clean all global variables
+rm(list = ls())
+
+# The name of packages needed
+pkgs <- c("pander","tidyverse","naniar")
+
+# Install the packages if they are not installed.
+for (i in seq_along(pkgs)){
+
+  if(!(pkgs[i] %in% rownames(installed.packages()))){
+    install.packages(pkgs[i])
+  }else{
+    print(sprintf("The package %s is in the library.", pkgs[i]))}
+  
+  library(pkgs[i],character.only=TRUE)
+}
+
+# check the zip files in the folder
+list_file <- list.files("zip",pattern = "zip$") 
+
+# create a new directory in the current working directory
+if (!dir.exists("zip/unzip")){
+  dir.create("zip/unzip")
+  unzip(paste0("zip/",list_file),exdir = "zip/unzip")
+} else {
+  print("Dir already exists!")
+}
+
+# create a function to read the files
+
+files <- list.files("zip/unzip/data")
+
+# alternative way
+# n <- seq_along(list.files("data"))
+
+emty_list <- list()
+for (i in 1:length(files)){
+  if (str_detect(files[i], "csv$") == TRUE) {
+    emty_list[[i]] <- read_csv(paste0("zip/unzip/data/",files[i]))
+  }
+  else {
+    emty_list[[i]] <- readxl::read_xlsx(paste0("zip/unzip/data/",files[i]))
+  }
+  assign(files[i],emty_list[[i]]) 
+}
+
+
+str(`sprint-testing-data.csv`)
+
+glimpse(`sprint-testing-data.csv`)
+
+
+head(`sprint-testing-data.csv`, n = 6L)
+
+tail(`sprint-testing-data.csv`, n = 6L)
+
+slice_head(`sprint-testing-data.csv`, n = 6L)
+
+slice_tail(`sprint-testing-data.csv`, n = 6L)
+
+# checking the number of NAs
+sum(is.na(`sprint-testing-data.csv`))
+
+# colsums
+colSums(is.na(`sprint-testing-data.csv`))
+
+# rowsums
+rowSums(is.na(`sprint-testing-data.csv`))
+
+apply(`sprint-testing-data.csv`, 2,function(x) length(which((is.na(x)))))
+
+apply(`sprint-testing-data.csv`, 2, function (x) sum(is.na(x)))
+
+which(is.na(`sprint-testing-data.csv`), arr.ind = TRUE)
+
+apply(`sprint-testing-data.csv`, 2, function (x) which(is.na(x)))
+
+lapply(`sprint-testing-data.csv`, function (x) which(is.na(x)))
+
+library(naniar)
+naniar::vis_miss(`sprint-testing-data.csv`)
+any_na(`sprint-testing-data.csv`)
+vis_miss(`sprint-testing-data.csv`)
+gg_miss_var(`sprint-testing-data.csv`, show_pct = TRUE) + 
+  labs(x = "Variables with NAs")
+
+# Drop the variables which have more than 40 per cent of NAs.
+# train <- train[lapply(train, function(x) sum(is.na(x)) / length(x) ) < 0.4]
+
+lapply(`sprint-testing-data.csv`, function(x) sum(is.na(x)) / length(x)) < 0.4
+
+
+# Answer
+# Each observation is on a different row
+# Each variable is in a different column
+# Each individual value is in a different cell
+# Missing data has been dealt with appropriately
+
+# Answer
+# Each observation is on a different row
+# Each variable is in a different column
+# Each individual value is in a different cell
+# Missing data has been dealt with appropriately
+
+
+#Convert the sprint data from wide to long format 
+
+# use pivot_longer
+sprint_long <- pivot_longer(data = `sprint-testing-data.csv`, 
+                            cols = - athlete, 
+                            names_to = "time_point",
+                            values_to = "sprint_time")
+
+#fish_encounters %>%
+#  pivot_wider(names_from = station, values_from = seen)
+
+# sep = "[^[:alnum:]]+" default
+sprint_long <- separate(data = sprint_long, 
+                        col = time_point,
+                        into = c("testing_session", "trial"),
+                        sep = "_")
+
+sprint_long
+
+
+naniar::vis_miss(sprint_long)
+
+
+sprint_tidy <- drop_na(sprint_long)
+
+sprint_tidy2 <- na.omit(sprint_long)
+
+table(sprint_tidy == sprint_tidy2)
+
+sprint_summary <- sprint_tidy %>%
+  group_by(athlete, testing_session) %>%
+  summarise(mean_time = round(mean(sprint_time), 2), best_time = min(sprint_time))
+
+sprint_summary
+
+sprint_summary <- sprint_tidy %>%
+  group_by(athlete, testing_session) %>%
+  summarise(mean_time = round(mean(sprint_time), 2), best_time = min(sprint_time))
+
+sprint_summary
+
+sprint_summary <- sprint_summary %>%
+  pivot_wider(names_from = testing_session, 
+              values_from = mean_time:best_time)
+
+sprint_summary
+
+sprint_summary <- sprint_summary %>%
+  select(athlete, mean_time_pre, best_time_pre, mean_time_post, best_time_post)
+
+sprint_summary %>% select(best_time_post,everything())
+sprint_summary
+
+sprint_summary %>% 
+  arrange(best_time_post)
+
+sprint_summary <- sprint_summary %>% 
+  mutate(best_time_diff = best_time_post - best_time_pre)
+
+sprint_summary
+
+testing <- full_join(sprint_summary, yyir, by = "athlete")
+testing
+
+
+
+
+
+
+
+

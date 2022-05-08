@@ -1,0 +1,95 @@
+---
+title: "Exploring hockey data"
+author: "Jocelyn Mara"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Overview 
+
+The purpose of this document is two-fold:
+
+1. To provide some examples of basic data analysis techniques for exploring, describing, and summarising data
+2. To demonstrate the magic of Rmarkdown and convince you to always use Rmarkdown to document your analysis
+
+## Load required packages
+
+```{r packages, message=FALSE}
+library(tidyverse) # include all required packages at the start
+```
+
+## Data source
+
+The data used in this document contains match data for every game of the 2018-19 National Hockey League. It has been sourced from [www.hockey-reference.com](www.hockey-reference.com). The raw data can be found [here](http://hkref.com/tiny/mmDlH).
+
+## Read data
+
+Read in the `2018-19_nhl_match-data.csv` file using the `read_csv()` function from the `readr` package. 
+
+```{r read_data, message=FALSE} 
+# read in the data
+# data dir should be in the working dir
+df <- read_csv("data/2018-19_nhl_match-data.csv")
+```
+
+## Checking the data
+
+Check the structure of the data file using `str()`:
+
+```{r structure}
+str(df)
+```
+
+Check the first 6 rows of the data file using `head()`
+
+```{r head}
+knitr::kable(head(df))
+```
+
+Check the last 6 rows of the data file using `tail()`
+
+```{r tail}
+tail(df)
+```
+
+Check for missing values using:
+
+```{r na}
+sum(is.na(df)) # count the missing values
+head(which(is.na(df), arr.ind = TRUE)) # find where the missing values are (showing only first 6 rows)
+```
+
+The missing values all appear in the `Time` variable when the game finished in regular time (i.e. it did not go to overtime or a shoot-out). 
+
+We can impute the missing values with the string "REG" for regular time using the`replace_na()` function from the dplyr package:
+
+```{r replace_na}
+df <- replace_na(df, list(Time = "REG"))
+sum(is.na(df)) # check for missing values again
+```
+
+## Exploratory analysis
+
+Let's create some summary statistics per team (e.g. `Tm` variable)
+
+```{r summarising}
+team_outcomes <- 
+  df %>%
+    count(Tm, Outcome) %>%
+    group_by(Tm) %>%
+    mutate(prob = round(prop.table(n), 2))
+
+team_outcomes
+```
+
+We can create a barplot from the summarised data above using `ggplot2` to visualise frequencies and proportions
+
+```{r barplot}
+team_outcomes %>%
+  ggplot(aes(x = Tm, y = prob, fill = Outcome)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x = element_text(angle = 90))
+```

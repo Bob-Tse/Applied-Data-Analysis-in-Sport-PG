@@ -1,0 +1,700 @@
+# Clean Console as command (CTRL + L)
+cat("\014") 
+
+# Clean all global variables
+rm(list = ls())
+
+# install.packages("openxlsx")
+# install.packages("readxl")
+
+# load the packages
+library(readxl)
+library(openxlsx)
+
+# Create a function to read the formula
+regEq <- function(lmObj, dig) {
+  gsub(":", "*", 
+       paste0(
+         names(lmObj$model)[1]," = ",
+         paste0(
+           c(round(lmObj$coef[1], dig), round(sign(lmObj$coef[-1])*lmObj$coef[-1], dig)),
+           c("", rep("*", length(lmObj$coef)-1)),
+           paste0(c("", names(lmObj$coef)[-1]), c(ifelse(sign(lmObj$coef)[-1]==1," + "," - "), "")),
+           collapse=""
+         )
+       )
+  )
+}
+
+
+# read the file name
+file = list.files(pattern = "xlsx")
+
+# get the name of sheets
+# file has to be closed before launching the code!
+sheetname <- getSheetNames(file)
+
+# use a loop to read the data
+for (i in 1:length(sheetname)) {
+  dat <-read_excel(file, sheet = sheetname[i],col_names = TRUE)
+  emptycols <- sapply(dat, function (k) all(is.na(k)))
+  dat <- dat[!emptycols] # remove empty columns
+  dat <- dat[rowSums(is.na(dat)) != ncol(dat),] # remove empty rows
+  assign(sheetname[i],dat)
+}
+
+
+# Q1
+
+# Check the number of observations
+nrow(Q1data)
+
+# a)
+
+# Average working hours on the assignment
+avg_wkhrs <- mean(Q1data$X)
+
+# Average working hours on the assignment
+avg_marks <- mean(Q1data$Y)
+
+# Print the result
+
+sprintf("The average working hours on the assignment are %.2f.",avg_wkhrs)
+# [1] "The average working hours on the assignment are 6.21."
+
+sprintf("The average marks on the assignment are %.2f.",avg_marks)
+# [1] "The average marks on the assignment are 74.89."
+
+# b)
+
+# Build the model
+model_Q1 <- lm(formula = Y ~ X, data = Q1data, na.action = na.exclude)
+
+# Get the equation
+Equation1 <- regEq(model_Q1,3)
+
+# Print the equation
+cat("The equation is", Equation1,".")
+# The equation is Y = 39.49 + 5.701*X .
+
+# Interpretation
+# Beta 1 refers to the intercept estimate.
+# When X (working hours) is zero, Y (mark) is 39.49.
+
+# Beta 2 refers to the slope estimate. 
+#If X (working hours) increased by one unit, Y (mark) would increase by 5.701,
+# holding all the other factors constant.
+
+# c)
+
+# Calculate the coefficient of correlation
+coff <- formatC(with(Q1data,cor(X,Y)), digits = 3)
+
+# Print the coefficient of correlation
+paste0("The coefficient of correlation r is: ", coff, ".")
+# [1] "The coefficient of correlation r is: 0.634."
+
+# d) Test if the fitted model is significant using alpha  = 0.01
+
+# install.packages ("pander")
+# install.packages("tidyverse")
+
+# load the packages
+library(pander)
+library(tidyverse)
+
+# slope significance
+summary(model_Q1) %>% pander()
+
+#--------------------------------------------------------------
+#  &nbsp;        Estimate   Std. Error   t value   Pr(>|t|) 
+#----------------- ---------- ------------ --------- ----------
+#  **(Intercept)**    39.49       10.68       3.698    0.001785 
+#
+#       **X**         5.701       1.685       3.383    0.003535 
+#--------------------------------------------------------------
+#  
+#  
+#  --------------------------------------------------------------
+#  Observations   Residual Std. Error   $R^2$    Adjusted $R^2$ 
+#  -------------- --------------------- -------- ----------------
+#       19               9.254          0.4024       0.3672     
+#--------------------------------------------------------------
+#  
+#  Table: Fitting linear model: Y ~ X
+
+# The p value of the slope estimate beta 2 is 0.004, which is less than alpha = 0.01.
+# Hence, we reject the null hypothesis and accept the alternative hypothesis.
+# The conclusion is that the slope estimate is significant.
+
+# regression significance
+anova(model_Q1) %>% pander()
+
+#------------------------------------------------------------
+#  &nbsp;       Df   Sum Sq   Mean Sq   F value    Pr(>F)  
+#--------------- ---- -------- --------- --------- ----------
+#   **X**       1    980.1     980.1     11.45    0.003535 
+#
+#**Residuals**   17    1456     85.63      NA         NA    
+#------------------------------------------------------------
+#  
+#  Table: Analysis of Variance Table
+
+# The p value of the F distribution beta 2 is 0.003535 (calculated as 1 - pf(11.45,1,17)), which is less than alpha = 0.01.
+# Hence, we reject the null hypothesis and accept the alternative hypothesis.
+# The conclusion is that the regression is significant.
+
+# e)
+# Present a residual plot for the fitted model for Y on X, with brief comments.
+plot(model_Q1,1)
+
+# Comments
+# The spread of residuals is consistent and shows no pattern.
+# Hence, the assumption MLR.5 homoskedasticity is met.
+
+
+# Q2
+
+# Get a glimpse of the Q2data
+dplyr::glimpse(Q2data)
+
+# Check the rows and columns 
+dim(Q2data)
+
+# a) the first summary output
+
+# Build the model ONE
+model_Q2_one <- lm(formula = Y ~ X1 + X2, data = Q2data, na.action = na.exclude)
+
+summary(model_Q2_one) 
+
+# fitted model
+
+# Get the equation
+Equation2_one <- regEq(model_Q2_one,3)
+
+# Print the equation
+cat("The equation is", Equation2_one,".")
+# The equation is Y = -18.355 + 0.165*X1 + 0.787*X2 .
+
+# b) Test if the fitted model as a whole is significant using the first summary output. alpha = 0.05
+
+# The model as a whole is significant since the p value of F distribution is less than alpha = 0.05,
+# meaning that we need to reject the null hypothesis (the regression is not significant) and accept the
+# alternative hypothesis (the regression is significant).
+
+# c) Residual plot
+
+# Assumptions underlying regression
+plot(model_Q2_one,1)
+
+# i) the errors are independent.
+# This assumption has been  met as points look very random without showing a pattern.
+# However, it can be clearly seen that points 7 and 13 need to treated as outliers and removed.
+
+# ii) the errors have the same variance. (Constant variance)
+#  Despite the existence of outliers, points are evenly spread out, so this assumption has also been satisfied.
+
+# iii) the error variable is normal
+plot(model_Q2_one,2)
+# As shown in the QQ plot, most residuals are normally distributed, except the points 7 and 13.
+# so this assumption has not been fully met to an extent.
+
+# An alternative way is to use histogram
+# Residuals also follow a normal distribution
+hist(model_Q2_one$residuals, 
+     breaks = 4,
+     main = "Distribution of Residuals",
+     xlab = "Residuals",
+     ylab = "Count",
+     las = 1)
+                                          
+# iv) the errors have any outliers.
+plot(model_Q2_one,4)
+
+# From the graph, we can see that points 7,9,13 are potential outliers.
+# To confirm the assumption, further research is required.
+# In this case, we use use the multivariate approach (LM) to test the outlier.
+
+# use the scale function
+z_residuals <- scale(model_Q2_one$residuals)
+
+# Find the residuals
+which(abs(z_residuals) >= 2)
+# [1]  7 13
+# The test shows that the points 7 and 13 are outliers
+# When the dataset is large enough , a single outlier may not have a big effect
+# on the regression equation.
+# However, in this case, we only have 14 observations, so the existence of outliers
+# can have a significant impact on the regression eistence, not only increasing the variability in the dataset, 
+# but also decreasing the statistical power.
+
+# d) the second summary output
+
+# Build the model TWO
+model_Q2_two <- lm(formula = Y ~ X1 + X2 + X3, data = Q2data, na.action = na.exclude)
+
+# Get the equation
+Equation2_two <- regEq(model_Q2_two,3)
+
+# Print the equation
+cat("The equation is", Equation2_two,".")
+# The equation is Y = -7.518 + 0.1*X1 - 0.2*X2 + 1.856*X3 .
+
+summary(model_Q2_two) %>% pander()
+
+#--------------------------------------------------------------
+#  &nbsp;        Estimate   Std. Error   t value   Pr(>|t|) 
+#----------------- ---------- ------------ --------- ----------
+#  **(Intercept)**    -7.518      16.64      -0.4517    0.6611  
+#
+#       **X1**        0.09951     0.06805      1.462     0.1744  
+#
+#       **X2**        -0.2003      0.9842     -0.2035    0.8428  
+#
+#       **X3**         1.856       1.175       1.58      0.1452  
+#--------------------------------------------------------------
+#  
+#  
+#  --------------------------------------------------------------
+#  Observations   Residual Std. Error   $R^2$    Adjusted $R^2$ 
+#  -------------- --------------------- -------- ----------------
+#       14               7.034          0.6267       0.5147     
+#--------------------------------------------------------------
+#  
+#  Table: Fitting linear model: Y ~ X1 + X2 + X3
+
+
+# Differences between the two models.
+
+# Install the package modelr
+# install.packages("modelr")
+
+# Load the package
+library(modelr)
+
+# 1) R SQUARE
+
+# model one
+rsquare(model_Q2_one,Q2data)
+# [1] 0.5335002
+# Adjusted R square
+# 0.4487
+
+# model two
+rsquare(model_Q2_two,Q2data)
+# [1] 0.6266829
+# Adjusted R square
+# 0.5147
+
+# Compared with model one, model 2 has higher R square and adjusted R square values.
+# R? is the percentage of variation (i.e. varies from 0 to 1) 
+# explained by the relationship between two variables. 
+# In other words, the higher the R square value, the more usefulness of the regression line.
+
+# Adjusted R square penalizes the model if it contains too many non-significant predictors
+
+# https://towardsdatascience.com/tagged/r-square?p=425ddfebf667
+
+
+# 2) slope significance
+# In model one, the slope estimate of the variable X2 is not significant, since its p value 
+# is higher than five percent,
+
+# In model two, all three variables are not significant, 
+# meaning that the model cannot truly reflect the relationship 
+# between explanatory variables and the dependent variable.
+
+# Check the correlation coefficients.
+round(cor(Q2data[,-1]),2)
+
+# install.packages("car")
+# load the package
+library(car)
+vif(model_Q2_two)
+#       X1       X2       X3 
+#  1.804011 1.897711 2.927818 
+
+# despite that the variable X3 shows a strong positive relationship with the variables X1 and X2.
+# VIF test suggests that there is not a severe problem of multicollinearity.
+
+# 3) Residual standard error.
+# Model 2 has a lower value of residual standard error than Model 1, indicating better fit.
+
+# Model one: 7.497
+# Model two: 7.034
+
+# e) prediction
+
+# Model one will be selected for making the prediction.
+# Although the result of vif test indicates that there is not a severe problem of multicollinearity in the model two,
+# all three slopes are not significant, reflecting that the model may not be able to reflect the true relationship between
+# explanatory variables and the dependent variable.
+
+# Making a prediction
+
+predict_data <- tibble(X1 = 200, X2 = 15, X3 = 5)
+
+# If the logical se.fit is TRUE, standard errors of the predictions are calculated.
+Predict(model_Q2_one,
+        newdata = predict_data,
+        se.fit = T,
+        interval = "prediction",
+        level = 0.95)
+# The annual sales ($ millions) of the newly open branch is 26.4852, 
+# with lower limit 8.485121 and upper limit 44.8651 
+
+
+# Q3
+
+# Check the dimension of the dataset Q3data
+dim(Q3data)
+# [1] 34  4
+
+# b) estimate the model using least square methods
+
+# create new variables "Y" and "X"
+Q3data <- transform(Q3data,Y = ee/p, X = gdp/p)
+
+# Get a glimpse of the Q3data
+dplyr::glimpse(Q3data)
+
+# Build the model
+model_Q3 <- lm(formula = Y ~ X, data = Q3data, na.action = na.exclude)
+
+# Get the equation
+Equation3 <- regEq(model_Q3,3)
+
+# Print the equation
+cat("The equation is", Equation3,".")
+# The equation is Y = -0.125 + 0.073*X .
+
+# plot the least squares line
+plot(Q3data$Y ~ Q3data$X,
+     main="Linear Regression", 
+     xlab="Y (ee/p)", 
+     ylab="X (gdp/p)")
+abline(model_Q3, col = "blue")
+
+# plot the residuals
+plot(model_Q3,1)
+
+# Create a scatterplot, showing a week triangle pattern.
+plot(Q3data$Y ~ Q3data$X)
+
+# The spread of residuals is not constant and shows a pattern instead.
+# In other words, the variance increases with the GDP.
+
+# c) Test for the existence of heteroskedasticity using a BP test.
+
+
+# add residuals,fitted values, squared residuals and squared fitted values to the data frame
+Q3data <- add_column(Q3data,uhat = model_Q3$residuals, yhat = model_Q3$fitted.values,
+                     uhatsq = (model_Q3$residuals)^2, yhatsq = (model_Q3$fitted.values)^2)
+
+
+
+# Use Breusch-Pagan (LM) test for heteroskedasticity
+bp_lm <- lm(formula = uhatsq ~ X, data = Q3data, na.action = na.exclude)
+
+# Get the R squared value
+R2_bp <- summary(bp_lm)$r.squared
+
+# calculate the LM
+LM_Q3 <- nrow(Q3data) * R2_bp
+# [1] 7.351538
+
+# Get the chi-squared value
+qchisq(0.95,df = 1)
+# [1] 3.841459
+
+# Since LM_Q3 is higher than the chi-squared value under alpha = 0.05 and df = 1.
+# we reject the null hypothesis and accept the alternative hypothesis that 
+# there is an issue of heteroskedasticity.
+
+# Can also use a p value
+# lower than the alpha = 0.05 level
+1 - pchisq(LM_Q3,df = 1)
+# [1] 0.006700541
+
+# Alternative way (using package)
+# install.packages("lmtest")
+
+# load the package
+library(lmtest)
+
+# bp test
+bptest(model_Q3)
+
+# studentized Breusch-Pagan test
+#
+# data:  model_Q3
+# BP = 7.3515, df = 1, p-value = 0.006701
+
+# d) Re-estimate the model under the assumption that var(ui) = sigma squared Xi
+
+# Use weights
+weights2 <- 1/Q3data$X
+
+# Build the model again
+model_Q3_new <- lm(formula = Y ~ X, data = Q3data, weights = weights2, na.action = na.exclude)
+
+# Get the equation
+Equation3_new <- regEq(model_Q3_new,3)
+
+# Print the equation
+noquote(paste0("The equation is ", Equation3_new,"."))
+# [1] The equation is Y = -0.093 + 0.069*X.
+
+# Check the R squared value of the new model
+summary(model_Q3_new)$r.squared
+# [1] 0.8852637
+
+# Make comparison with the previous model
+summary(model_Q3)$r.squared
+# [1] 0.8618233
+
+# Recheck the heterososkedasticity using the bp test
+bptest(model_Q3_new)
+
+# e) Test the heteroskedaticity using F test
+
+# Use the R squared value from the question 3
+R2_bp
+# [1] 0.2162217
+
+# k
+dfReg <- 1
+
+# n-k-1
+dfResid <- nrow(Q3data) - dfReg - 1
+
+#F test  F = (R2/dfReg)/((1-R2)/dfResid)
+F_value <-  (R2_bp/dfReg)/((1-R2_bp)/dfResid)
+
+# Check the F value 
+F_value
+# [1] 8.827872
+
+# Compared with the F value under the degree of freedom (1,32)
+qf(0.95, df1= dfReg, df2= dfResid)
+# [1] 4.149097
+
+# Since the F value of the model is higher than the F value under the degree of freedom (1,32),
+# We reject the null hypothesis and accept the alternative hypothesis that there is an issue of heteroskedasticity.
+
+# Alternative way, using p value instead
+F_p_value <- 1 - pf(F_value, df1= dfReg, df2= dfResid)
+
+# Check the p value
+F_p_value
+# [1] 0.005590576
+# The p value is lower than five percent, so we reject the null hypothesis and accept the alternative hypothesis.
+
+# f) Test the heteroskedaticity using white test
+
+# Use a formula approach (special form)
+white_lm <- lm(uhatsq ~ yhat + yhatsq, data=Q3data)
+
+# Get the equation
+Equation3_white <- regEq(white_lm,3)
+
+
+# Print the equation
+cat("The equation is ", Equation3_white,".",sep ="")
+# The equation is uhatsq = 0.01 - 0.049*yhat + 0.09*yhatsq.
+
+# R squared value
+white_R2 <- summary(white_lm)$r.squared
+# [1] 0.2929838
+
+# Observations
+white_n <- nrow(Q3data)
+# [1] 34
+
+# Variables
+white_k <- 2 #yhat & yhatsq 
+
+# White LM value
+white_LM = white_n * white_R2
+
+# Check the value
+white_LM
+# [1] 9.961449
+
+# Check the p value of white test
+white_p_value <- 1- pchisq(white_LM, df = white_k)
+
+white_p_value
+# [1] 0.006869082
+
+# The p value of white test is than five percent, so we reject the null hypothesis 
+# and accept the alternative hypothesis that there is an issue of heteroskedaticity.
+
+# Alternative way (using bptest with new x variables)
+bptest(model_Q3, ~ yhat + yhatsq, data = Q3data)
+
+#studentized Breusch-Pagan test
+#
+#data:  model_Q3
+#BP = 9.9614, df = 2, p-value = 0.006869
+
+
+# Q4
+
+# Check the dimension of the dataset Q4data
+dim(Q4data)
+# [1] 157   3
+
+# b) plot
+
+# Mean Maximum Temperatures
+plot(Q4data$Month,Q4data$MeanMaxTemp, 
+     main="Time Series (Mean Maximum Temperatures)", 
+     xlab="Month", 
+     ylab="Mean Maximum Temperatures",
+     type ="l",
+     las = 1,
+     col ="forestgreen")
+
+# Mean Minimum Temperatures
+plot(Q4data$Month,Q4data$MeanMinTemp, 
+     main="Time Series (Mean Minimum Temperatures)", 
+     xlab="Month", 
+     ylab="Mean Minimum Temperatures",
+     type ="l",
+     las = 1,
+     col ="forestgreen")
+
+# use ggplot (Alternative way)
+
+# Install package "tidyverse" if it is not installed.
+if(!("ggthemes" %in% rownames(installed.packages()))){
+  install.packages("ggthemes")
+}else{
+  print("The package is in the library.")
+}
+# Load the package "ggthemes".
+library(ggthemes)
+
+# MeanMaxTemp
+ggplot(Q4data,aes(x = Month, y = MeanMaxTemp))+
+  geom_line(aes(color = MeanMaxTemp))+
+  xlab("Month")+
+  ylab("Mean Maximum Temperatures")+
+  ggtitle("Time Series (Max)")+
+  scale_color_continuous(name = "Temperature",low = "navy", high = "lightpink")+
+  theme_wsj()+
+  theme(plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+        axis.title.x = element_text(size = 12, face = "bold", hjust = 0.5),
+        axis.title.y = element_text(size = 12, face = "bold", hjust = 0.5),
+        axis.text.x = element_text(size = 10, face = "plain", hjust = 0.5),
+        axis.line = element_line(size = 0.5, linetype = "solid", colour = "grey"),
+        legend.position = "bottom",
+        legend.title = element_text(size = 10, face = "bold", hjust = 0.5),
+        legend.text = element_text(size = 10, face = "plain", hjust = 0.5),
+        legend.spacing.y = unit(0.5,'cm'),
+        axis.ticks = element_blank())
+
+
+# MeanMinTemp
+ggplot(Q4data,aes(x = Month, y = MeanMinTemp))+
+  geom_line(aes(color = MeanMinTemp))+
+  xlab("Month")+
+  ylab("Mean Minimum Temperatures")+
+  ggtitle("Time Series (Min)")+
+  scale_color_continuous(name = "Temperature",low = "navy", high = "lightpink")+
+  theme_wsj()+
+  theme(plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+        axis.title.x = element_text(size = 12, face = "bold", hjust = 0.5),
+        axis.title.y = element_text(size = 12, face = "bold", hjust = 0.5),
+        axis.text.x = element_text(size = 10, face = "plain", hjust = 0.5),
+        axis.line = element_line(size = 0.5, linetype = "solid", colour = "grey"),
+        legend.position = "bottom",
+        legend.title = element_text(size = 10, face = "bold", hjust = 0.5),
+        legend.text = element_text(size = 10, face = "plain", hjust = 0.5),
+        legend.spacing.y = unit(0.5,'cm'),
+        axis.ticks = element_blank())
+
+
+# c) Are both the time series data stationary or non-stationary?
+
+# the time series data are stationary
+
+# The values vary within a range and show a trend
+
+# load the package
+library(tseries)
+
+adf.test(Q4data$MeanMinTemp) 
+# The dickey-Fuller value is -10.325 which is smaller than the critical value -3.41, 
+# so we reject the null hypothesis and accept the alternative hypothesis that the data are stationary
+
+adf.test(Q4data$MeanMaxTemp) 
+# The dickey-Fuller value is -10.222 which is smaller than the critical value -3.41, 
+# so we reject the null hypothesis and accept the alternative hypothesis that the data are stationary
+
+# d)
+# Fit an AR(1) model for the mean maximum temperature time series 
+# if the time series is stationary
+
+Q4data$LagMeanMaxTemp <- c(NA,Q4data$MeanMaxTemp[-length(Q4data$MeanMaxTemp)])
+
+Q4data$diff_meanmax <- Q4data$MeanMaxTemp - Q4data$LagMeanMaxTemp
+
+
+model_Q4 <- lm(formula = MeanMaxTemp ~ LagMeanMaxTemp, data = Q4data, na.action = na.exclude)
+
+regEq(model_Q4,4)
+
+summary(model_Q4)
+
+rsquare(model_Q4,Q4data)
+
+predict_data_Q4 <- tibble(LagMeanMaxTemp = Q4data$MeanMaxTemp[length(Q4data$MeanMaxTemp)])
+
+predict(model_Q4,
+        newdata = predict_data_Q4,
+        se.fit = T,
+        interval = "prediction",
+        level = 0.95)
+ 
+# 15.71874
+
+
+library(forecast)
+
+auto.arima(Q4data$MeanMaxTemp)
+
+
+
+# f)
+# Test if there is an ARCH effect in the data, with alpha =0.05
+
+# get residuals
+resi <- model_Q4$residuals
+
+# residual square
+resi2 <- resi^2
+
+# create a model
+lm_usq <- lm(resi2 ~ Q4data$LagMeanMaxTemp[-1])
+
+# summary of the model
+summary(lm_usq) 
+
+# R square value
+R2 <- summary(lm_usq)$r.squared  
+R2 
+
+# LM test
+LM <- length(resi2) * R2
+LM
+LM_p_value <- 1- pchisq(LM, df = 1)
+LM_p_value 
+# [1] 0.2524171
+
+# fail to reject H0 can conclude that the variance is equal
+
+plot(model_Q4,1)
+
